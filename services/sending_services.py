@@ -1,4 +1,3 @@
-from datetime import datetime
 from services.log_service import LogService
 from utils.validators import Validators
 
@@ -22,8 +21,8 @@ class SendingService:
         Validators.validate_phone(customer_contact)
 
         query = """
-        INSERT INTO sending (product_id, quantity, customer_contact, description, sent_by, created_at)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO sending (product_id, quantity, customer_contact, description, sent_by)
+        VALUES (%s, %s, %s, %s, %s)
         """
 
         try:
@@ -32,8 +31,7 @@ class SendingService:
                 quantity,
                 customer_contact,
                 description,
-                user_id,
-                datetime.now()
+                user_id
             ))
 
             record = self.db.fetch_one(
@@ -46,7 +44,6 @@ class SendingService:
             return record
 
         except Exception as e:
-            self.db.rollback()
             raise e
 
     def get_all(self):

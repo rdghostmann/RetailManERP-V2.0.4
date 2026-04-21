@@ -42,8 +42,8 @@ class StockService:
 
             query = """
                 INSERT INTO stock 
-                (product_id, imei, colour, quantity, batch_no, added_by, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                (product_id, imei, colour, quantity, batch_no, added_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """
 
             self.db.execute(query, (

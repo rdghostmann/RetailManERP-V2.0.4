@@ -91,7 +91,6 @@ class PlazaPage:
             self.load_table()
 
         except Exception as e:
-            self.db.rollback()
             messagebox.showerror("Error", str(e))
 
     def load_table(self):

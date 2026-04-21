@@ -1,4 +1,3 @@
-from datetime import datetime
 from services.log_service import LogService
 from utils.validators import Validators
 
@@ -34,8 +33,8 @@ class PlazaService:
             raise ValueError("IMEI not found in stock")
 
         query = """
-        INSERT INTO plaza (customer_name, customer_phone, product_id, imei, quantity, recorded_by, created_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO plaza (customer_name, customer_phone, product_id, imei, quantity, recorded_by)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
 
         try:
@@ -45,8 +44,7 @@ class PlazaService:
                 product_id,
                 imei,
                 quantity,
-                user_id,
-                datetime.now()
+                user_id
             ))
 
             record = self.db.fetch_one(
@@ -59,7 +57,6 @@ class PlazaService:
             return record
 
         except Exception as e:
-            self.db.rollback()
             raise e
 
     def get_all(self):

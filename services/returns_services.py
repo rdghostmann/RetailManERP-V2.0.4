@@ -1,4 +1,3 @@
-from datetime import datetime
 from services.log_service import LogService
 from utils.validators import Validators
 
@@ -23,8 +22,8 @@ class ReturnsService:
         Validators.validate_quantity(quantity)
 
         query = """
-        INSERT INTO returns (product_id, imei, colour, quantity, reason, recorded_by, created_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO returns (product_id, imei, colour, quantity, reason, recorded_by)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
 
         try:
@@ -34,8 +33,7 @@ class ReturnsService:
                 colour,
                 quantity,
                 reason,
-                user_id,
-                datetime.now()
+                user_id
             ))
 
             record = self.db.fetch_one(
@@ -48,7 +46,6 @@ class ReturnsService:
             return record
 
         except Exception as e:
-            self.db.rollback()
             raise e
 
     def get_all(self):

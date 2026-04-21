@@ -17,8 +17,8 @@ class ProductService:
             raise ValueError("Product already exists")
 
         query = """
-        INSERT INTO products (name, brand, description, created_at)
-        VALUES (%s, %s, %s, NOW())
+        INSERT INTO products (name, brand, description)
+        VALUES (%s, %s, %s)
         """
 
         self.db.execute(query, (name, brand, description))

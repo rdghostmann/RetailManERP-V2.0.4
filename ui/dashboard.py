@@ -128,8 +128,17 @@ class Dashboard:
             total_stock = sum([row["total_quantity"] for row in stock_data])
 
             sales_data = self.plaza_service.get_all()
-            sending_data = self.sending_service.get_all()
-            returns_data = self.returns_service.get_all()
+            sending_data = []
+            try:
+                sending_data = self.sending_service.get_all()
+            except Exception:
+                pass
+            
+            returns_data = []
+            try:
+                returns_data = self.returns_service.get_all()
+            except Exception:
+                pass
 
             self.stock_card.configure(text=str(total_stock))
             self.sales_card.configure(text=str(len(sales_data)))

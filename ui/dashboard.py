@@ -20,6 +20,7 @@ class Dashboard:
     def __init__(self, db, user):
         self.db = db
         self.user = user
+        self.active_tab = "dashboard"
 
         self.stock_service = StockService(db)
         self.plaza_service = PlazaService(db)
@@ -27,7 +28,7 @@ class Dashboard:
         self.returns_service = ReturnsService(db)
 
         self.root = ctk.CTk()
-        self.root.title("RetailMan Dashboard")
+        self.root.title("RetailMan ERP V.2.0.4")
         self.root.geometry(f"{UIConfig.WINDOW_WIDTH}x{UIConfig.WINDOW_HEIGHT}")
 
         self.build_layout()
@@ -56,21 +57,73 @@ class Dashboard:
     # 📚 SIDEBAR
     # ==============================
 
+    def show_dashboard(self):
+        self.active_tab = "dashboard"
+        self.build_dashboard_home()
+        self.load_dashboard_data()
+
+    def open_stock(self):
+        self.active_tab = "stock"
+        self.clear_content()
+        StockPage(self.content, self.db, self.user)
+
+    def open_plaza(self):
+        self.active_tab = "plaza"
+        self.clear_content()
+        PlazaPage(self.content, self.db, self.user)
+
+    def open_sending(self):
+        self.active_tab = "sending"
+        self.clear_content()
+        SendingPage(self.content, self.db, self.user)
+
+    def open_returns(self):
+        self.active_tab = "returns"
+        self.clear_content()
+        ReturnsPage(self.content, self.db, self.user)
+
+    def create_sidebar_button(self, text, command, tab_name):
+        is_active = self.active_tab == tab_name
+
+        return ctk.CTkButton(
+            self.sidebar,
+            text=text,
+            command=lambda: self.set_active_tab(tab_name, command),
+            fg_color="#00509D" if is_active else "transparent",
+            text_color="white" if is_active else "gray",
+            hover_color="#003F7D",
+            anchor="w"
+        )
+
+    def set_active_tab(self, tab_name, callback):
+        self.active_tab = tab_name
+        self.refresh_sidebar()
+        callback()
+
+    def refresh_sidebar(self):
+        for widget in self.sidebar.winfo_children():
+            widget.destroy()
+        self.build_sidebar()
+
     def build_sidebar(self):
         ctk.CTkLabel(self.sidebar, text="RetailMan", font=("Arial", 18)).pack(pady=20)
 
-        ctk.CTkButton(self.sidebar, text="Dashboard", command=self.show_dashboard).pack(fill="x", padx=10, pady=5)
-        ctk.CTkButton(self.sidebar, text="Stock", command=self.open_stock).pack(fill="x", padx=10, pady=5)
-        ctk.CTkButton(self.sidebar, text="Sending", command=self.open_sending).pack(fill="x", padx=10, pady=5)
-        ctk.CTkButton(self.sidebar, text="Plaza", command=self.open_plaza).pack(fill="x", padx=10, pady=5)
-        ctk.CTkButton(self.sidebar, text="Returns", command=self.open_returns).pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("Dashboard", self.show_dashboard, "dashboard").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("Stock", self.open_stock, "stock").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("Sending", self.open_sending, "sending").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("Plaza", self.open_plaza, "plaza").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("Returns", self.open_returns, "returns").pack(fill="x", padx=10, pady=5)
 
         if self.user["role"] == "admin":
-            ctk.CTkButton(self.sidebar, text="Logs", command=self.not_implemented).pack(fill="x", padx=10, pady=5)
+            self.create_sidebar_button("Logs", self.not_implemented, "logs").pack(fill="x", padx=10, pady=5)
 
-        ctk.CTkButton(self.sidebar, text="Logout", fg_color="red", command=self.logout).pack(fill="x", padx=10, pady=20)
-
-    # ==============================
+        ctk.CTkButton(
+            self.sidebar,
+            text="Logout",
+            fg_color="red",
+            command=self.logout
+        ).pack(fill="x", padx=10, pady=20)
+        # ==============================
     # 🏠 DASHBOARD VIEW
     # ==============================
 

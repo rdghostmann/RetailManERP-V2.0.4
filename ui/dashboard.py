@@ -28,7 +28,7 @@ class Dashboard:
         self.returns_service = ReturnsService(db)
 
         self.root = ctk.CTk()
-        self.root.title("RetailMan ERP V.2.0.4")
+        self.root.title("RetailMan ERP V.2.0.1")
         self.root.geometry(f"{UIConfig.WINDOW_WIDTH}x{UIConfig.WINDOW_HEIGHT}")
 
         self.build_layout()

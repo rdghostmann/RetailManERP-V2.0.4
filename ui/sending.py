@@ -28,7 +28,7 @@ class SendingPage:
         form.pack(fill="x", padx=10, pady=10)
 
         self.product_var = ctk.StringVar()
-        self.qty_entry = ctk.CTkEntry(form, placeholder_text="Quantity")
+        self.customer_name_entry = ctk.CTkEntry(form, placeholder_text="Customer Name")
         self.contact_entry = ctk.CTkEntry(form, placeholder_text="Customer Contact")
         self.desc_entry = ctk.CTkEntry(form, placeholder_text="Description")
 
@@ -39,14 +39,14 @@ class SendingPage:
         )
 
         self.product_dropdown.pack(side="left", padx=5)
-        self.qty_entry.pack(side="left", padx=5)
+        self.customer_name_entry.pack(side="left", padx=5)
         self.contact_entry.pack(side="left", padx=5)
         self.desc_entry.pack(side="left", padx=5)
 
         ctk.CTkButton(form, text="Dispatch", command=self.dispatch).pack(side="left", padx=5)
 
-        self.tree = ttk.Treeview(self.frame, columns=("Product", "Qty", "Contact"), show="headings")
-        for col in ("Product", "Qty", "Contact"):
+        self.tree = ttk.Treeview(self.frame, columns=("Product", "Customer", "Contact", "Description"), show="headings")
+        for col in ("Product", "Customer", "Contact", "Description"):
             self.tree.heading(col, text=col)
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
@@ -54,16 +54,23 @@ class SendingPage:
     def dispatch(self):
         try:
             product = next(p for p in self.products if p["name"] == self.product_var.get())
-            qty = int(self.qty_entry.get())
 
-            Validators.validate_quantity(qty)
+            customer_name = self.customer_name_entry.get().strip()
+            if not customer_name:
+                raise ValueError("Customer name is required")
+
+            contact = self.contact_entry.get().strip()
+            if not contact:
+                raise ValueError("Customer contact is required")
+
+            Validators.validate_phone(contact)
 
             self.sending_service.create_dispatch(
                 self.user["id"],
                 product["id"],
-                qty,
-                self.contact_entry.get(),
-                self.desc_entry.get()
+                customer_name,
+                contact,
+                self.desc_entry.get().strip()
             )
 
             messagebox.showinfo("Success", "Dispatch recorded")
@@ -79,8 +86,16 @@ class SendingPage:
         data = self.sending_service.get_all()
 
         for row in data:
+            # Fetch product name
+            product = self.db.fetch_one(
+                "SELECT name FROM products WHERE id=%s",
+                (row["product_id"],)
+            )
+            product_name = product["name"] if product else "Unknown"
+
             self.tree.insert("", "end", values=(
-                row["product_id"],
-                row["quantity"],
-                row["customer_contact"]
+                product_name,
+                row["customer_name"],
+                row["customer_contact"],
+                row["description"]
             ))

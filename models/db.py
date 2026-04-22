@@ -4,7 +4,7 @@ import pymysql
 from pymysql.connections import Connection
 from typing import Any, Dict, List, Optional
 from env_loader import Env
-from config import DB_CONFIG
+from app.config import DB_CONFIG
 
 
 class Database:

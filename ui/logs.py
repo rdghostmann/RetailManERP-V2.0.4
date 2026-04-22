@@ -80,7 +80,7 @@ class LogsPage:
                     WHERE u.name LIKE %s OR l.action LIKE %s
                     ORDER BY l.id DESC
                 """
-                data = self.db.execute(query, (f"%{search}%", f"%{search}%"), fetchall=True)
+                data = self.db.fetch_all(query, (f"%{search}%", f"%{search}%"))
             else:
                 query = """
                     SELECT l.*, u.name
@@ -88,7 +88,7 @@ class LogsPage:
                     JOIN users u ON l.user_id = u.id
                     ORDER BY l.id DESC
                 """
-                data = self.db.execute(query, fetchall=True)
+                data = self.db.fetch_all(query)
 
             for log in data:
                 tag = "danger" if log["action"] == "DELETE" else "info"

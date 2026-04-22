@@ -6,7 +6,7 @@ class User:
     id: int
     name: str
     phone: str
-    role: str
+    role: str  # "admin" | "staff"
 
 
 @dataclass

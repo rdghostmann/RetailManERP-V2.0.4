@@ -12,10 +12,12 @@ class PlazaService:
         user_id: int,
         product_id: int,
         imei: str,
+        colour: str,
         quantity: int,
         customer_name: str,
         customer_phone: str
     ):
+        
         # ✅ Validation
         Validators.validate_required(product_id, "Product is required")
         Validators.validate_imei(imei)
@@ -32,9 +34,21 @@ class PlazaService:
         if not stock:
             raise ValueError("IMEI not found in stock")
 
+        # ✅ Verify colour exists in stock for this IMEI
+        colour_stock = self.db.fetch_one(
+            "SELECT quantity FROM stock WHERE imei=%s AND colour=%s",
+            (imei, colour)
+        )
+
+        if not colour_stock:
+            raise ValueError(f"Colour '{colour}' not found in stock for this IMEI")
+
+        if colour_stock["quantity"] < quantity:
+            raise ValueError(f"Insufficient stock for colour '{colour}'")
+
         query = """
-        INSERT INTO plaza (customer_name, customer_phone, product_id, imei, quantity, recorded_by)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO plaza (customer_name, customer_phone, product_id, imei, colour, quantity, recorded_by)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
 
         try:
@@ -43,6 +57,7 @@ class PlazaService:
                 customer_phone,
                 product_id,
                 imei,
+                colour,
                 quantity,
                 user_id
             ))

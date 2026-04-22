@@ -33,28 +33,33 @@ class LoginWindow:
         phone = self.phone_entry.get()
         password = self.password_entry.get()
 
-        user = self.auth.login(name, phone)
-
-        if not user:
-            messagebox.showerror("Error", "User not found")
+        try:
+            result = self.auth.login(name, phone, password)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
             return
+
+        status = result.get("status")
+        user = result.get("user")
 
         # First-time password setup
-        if not user.get("password"):
+        if status == "SET_PASSWORD":
             self.auth.set_password(user["id"], password)
             messagebox.showinfo("Success", "Password created. Login again.")
+            self.name_entry.delete(0, 'end')
+            self.phone_entry.delete(0, 'end')
+            self.password_entry.delete(0, 'end')
             return
 
-        if not self.auth.verify_password(user, password):
-            messagebox.showerror("Error", "Invalid password")
-            return
-
-        messagebox.showinfo("Success", f"Welcome {user['name']}")
-
-        self.root.destroy()
-        from ui.dashboard import Dashboard
-        dashboard = Dashboard(self.db, user)
-        dashboard.run()
+        # Verify password for returning users
+        if status == "SUCCESS":
+            messagebox.showinfo("Success", f"Welcome {user['name']}")
+            self.root.destroy()
+            from ui.dashboard import Dashboard
+            dashboard = Dashboard(self.db, user)
+            dashboard.run()
+        else:
+            messagebox.showerror("Error", "Login failed")
 
     def run(self):
         self.root.mainloop()

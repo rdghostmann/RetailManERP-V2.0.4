@@ -104,14 +104,34 @@ class UIConfig:
     WINDOW_WIDTH = 1200
     WINDOW_HEIGHT = 800
 
-    COLORS = {
-        "primary": "#00509D",
-        "light": "#E1EFFE",
-        "danger": "#FF4D4D",
+    # Dark Theme
+    DARK_COLORS = {
+        "bg": "#212121",
+        "fg": "#FFFFFF",
+        "primary": "#9D007E",
+        "secondary": "#1E1E1E",
+        "accent": "#00509D",
+        "text": "#FFFFFF",
+        "text_secondary": "#B0B0B0",
+        "border": "#404040",
         "success": "#28A745",
-        "warning": "#FFC107",
+        "danger": "#FF6B6B",
+        "warning": "#FFC107"
+    }
+
+    # Light Theme
+    LIGHT_COLORS = {
+        "bg": "#F5F5F5",
+        "fg": "#000000",
+        "primary": "#9D007E",
+        "secondary": "#FFFFFF",
+        "accent": "#00509D",
         "text": "#1A1A1A",
-        "border": "#CCCCCC"
+        "text_secondary": "#666666",
+        "border": "#CCCCCC",
+        "success": "#28A745",
+        "danger": "#FF6B6B",
+        "warning": "#FFC107"
     }
 
     FONT = {

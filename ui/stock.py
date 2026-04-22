@@ -98,18 +98,22 @@ class StockPage:
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        data = self.stock_service.get_aggregated_stock()
+        data = self.stock_service.get_all_stock()
 
         for row in data:
-            qty = row["total_quantity"]
+            qty = row["quantity"]
 
-            # 🔴 Low stock alert
             tag = "low" if qty < InventoryConfig.LOW_STOCK_THRESHOLD else ""
 
             self.tree.insert(
                 "",
                 "end",
-                values=(row["product_id"], "-", row["colour"], qty),
+                values=(
+                    row["product_name"],
+                    row["imei"],
+                    row["colour"],
+                    qty
+                ),
                 tags=(tag,)
             )
 

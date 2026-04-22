@@ -11,24 +11,24 @@ class SendingService:
         self,
         user_id: int,
         product_id: int,
-        quantity: int,
+        customer_name: str,
         customer_contact: str,
         description: str = ""
     ):
         # ✅ Validation
         Validators.validate_required(product_id, "Product is required")
-        Validators.validate_quantity(quantity)
+        Validators.validate_required(customer_name, "Customer name is required")
         Validators.validate_phone(customer_contact)
 
         query = """
-        INSERT INTO sending (product_id, quantity, customer_contact, description, sent_by)
+        INSERT INTO sending (product_id, customer_name, customer_contact, description, sent_by)
         VALUES (%s, %s, %s, %s, %s)
         """
 
         try:
             self.db.execute(query, (
                 product_id,
-                quantity,
+                customer_name,
                 customer_contact,
                 description,
                 user_id

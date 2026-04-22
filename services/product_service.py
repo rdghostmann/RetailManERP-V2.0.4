@@ -34,3 +34,13 @@ class ProductService:
 
     def get_all(self):
         return self.db.fetch_all("SELECT * FROM products")
+
+    def get_by_imei(self, imei: str):
+        """Get product details by IMEI from stock"""
+        query = """
+        SELECT p.*, s.imei, s.quantity as stock_quantity, s.colour
+        FROM stock s
+        JOIN products p ON s.product_id = p.id
+        WHERE s.imei = %s
+        """
+        return self.db.fetch_one(query, (imei,))

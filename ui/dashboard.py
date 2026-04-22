@@ -2,6 +2,8 @@ import customtkinter as ctk
 from tkinter import messagebox
 import sys
 import os
+
+from ui.logs import LogsPage
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 
@@ -239,6 +241,11 @@ class Dashboard:
     def open_returns(self):
         self.clear_content()
         ReturnsPage(self.content, self.db, self.user)
+
+    def open_logs(self):
+        self.clear_content()
+        LogsPage(self.content, self.db)
+
 
     def not_implemented(self):
         messagebox.showinfo("Info", "Module not implemented yet")

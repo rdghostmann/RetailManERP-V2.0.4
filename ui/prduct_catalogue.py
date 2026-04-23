@@ -1,7 +1,7 @@
 #ui/product_catalogue.py
 import customtkinter as ctk
-from tkinter import ttk, messagebox
-
+from tkinter import ttk, messagebox, filedialog
+import pandas as pd
 
 class ProductCataloguePage:
     def __init__(self, root, db, current_user):
@@ -46,7 +46,16 @@ class ProductCataloguePage:
             command=self.create_product
         ).pack(side="left", padx=5)
 
-        # ===== TABLE (TREEVIEW) =====
+        # ===== EXPORT BUTTON =====
+        ctk.CTkButton(
+            self.frame,
+            text="Export to Excel",
+            command=self.export_to_excel,
+            fg_color="#15803D",
+            hover_color="#166534"
+        ).pack(pady=5)
+
+        # ===== TABLE =====
         table_frame = ctk.CTkFrame(self.frame)
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -94,7 +103,6 @@ class ProductCataloguePage:
 
             messagebox.showinfo("Success", "Product added")
 
-            # Clear inputs
             self.name.delete(0, "end")
             self.brand.delete(0, "end")
             self.desc.delete(0, "end")
@@ -105,10 +113,40 @@ class ProductCataloguePage:
             messagebox.showerror("Error", str(e))
 
     # =========================
-    # LOAD PRODUCTS INTO TREE
+    # EXPORT TO EXCEL
+    # =========================
+    def export_to_excel(self):
+        try:
+            data = self.db.fetch_all(
+                "SELECT name, brand, description FROM products ORDER BY name ASC"
+            )
+
+            if not data:
+                messagebox.showwarning("No Data", "No products to export")
+                return
+
+            df = pd.DataFrame(data)
+
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")],
+                title="Save Products As"
+            )
+
+            if not file_path:
+                return
+
+            df.to_excel(file_path, index=False)
+
+            messagebox.showinfo("Success", "Products exported successfully")
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # =========================
+    # LOAD PRODUCTS
     # =========================
     def load_products(self):
-        # Clear table
         for row in self.tree.get_children():
             self.tree.delete(row)
 
@@ -116,12 +154,11 @@ class ProductCataloguePage:
             "SELECT id, name, brand, description FROM products ORDER BY name ASC"
         )
 
-        # Insert rows
         for p in products:
             self.tree.insert(
                 "",
                 "end",
-                iid=p["id"],  # useful for future actions (edit/delete)
+                iid=p["id"],
                 values=(
                     p["name"],
                     p["brand"],

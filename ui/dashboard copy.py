@@ -1,4 +1,4 @@
-#ui/dashboard.py
+# ui/dashboard.py
 import customtkinter as ctk
 from tkinter import messagebox, ttk
 import sys
@@ -41,7 +41,7 @@ class Dashboard:
         self.root.title("RetailMan ERP V.2.0.1")
         self.root.geometry(f"{UIConfig.WINDOW_WIDTH}x{UIConfig.WINDOW_HEIGHT}")
 
-         # ICONS
+        # ICONS
         self.icons = {
             "dashboard": ctk.CTkImage(Image.open("public/dashboard.png"), size=(20, 20)),
             "stock": ctk.CTkImage(Image.open("public/in-stock.png"), size=(20, 20)),
@@ -62,7 +62,6 @@ class Dashboard:
 
         self.build_layout()
         self.load_dashboard_data()
-
 
     # ==============================
     # 🧱 LAYOUT
@@ -138,6 +137,7 @@ class Dashboard:
 
         ctk.CTkButton(self.sidebar, text="🔓 Logout",
                       fg_color="red", command=self.logout).pack(fill="x", padx=10, pady=20)
+
     # ==============================
     # 🏠 DASHBOARD VIEW
     # ==============================
@@ -145,11 +145,9 @@ class Dashboard:
     def build_dashboard_home(self):
         self.clear_content()
 
-        ctk.CTkLabel(
-            self.content,
-            text=f"Welcome, {self.user['name']} ({self.user['role'].title()})",
-            font=("Arial", 20)
-        ).pack(pady=10)
+        ctk.CTkLabel(self.content,
+                     text=f"Welcome, {self.user['name']} ({self.user['role'].title()})",
+                     font=("Arial", 20)).pack(pady=10)
 
         # KPI
         self.kpi_frame = ctk.CTkFrame(self.content)
@@ -160,7 +158,6 @@ class Dashboard:
         self.sending_card = self.create_card(self.kpi_frame, "Dispatch", "0", self.icons["dispatch"])
         self.returns_card = self.create_card(self.kpi_frame, "Returns", "0", self.icons["returns_kpi"])
 
-
         # Alerts
         self.alert_frame = ctk.CTkFrame(self.content)
         self.alert_frame.pack(fill="x", padx=10, pady=10)
@@ -170,11 +167,12 @@ class Dashboard:
         self.alert_list = ctk.CTkTextbox(self.alert_frame, height=120)
         self.alert_list.pack(fill="x", padx=10, pady=5)
 
-        # Inventory Table
+        # Table
         self.inventory_frame = ctk.CTkFrame(self.content)
         self.inventory_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(self.inventory_frame, text="📦 Inventory Overview", font=("Arial", 16)).pack(anchor="w", padx=10)
+        ctk.CTkLabel(self.inventory_frame, text="📦 Inventory Overview",
+                     font=("Arial", 16)).pack(anchor="w", padx=10)
 
         self.inventory_table = ttk.Treeview(
             self.inventory_frame,
@@ -188,7 +186,7 @@ class Dashboard:
         self.inventory_table.pack(fill="both", expand=True, padx=10, pady=10)
 
     # ==============================
-    # 🧮 KPI CARD
+    # 🧮 KPI CARD (UPDATED)
     # ==============================
 
     def create_card(self, parent, title, value, icon):
@@ -212,7 +210,7 @@ class Dashboard:
         return value_label
 
     # ==============================
-    # 📊 DATA LOADING
+    # 📊 DATA
     # ==============================
 
     def load_dashboard_data(self):
@@ -226,14 +224,13 @@ class Dashboard:
             sending_data = self.sending_service.get_all()
             returns_data = self.returns_service.get_all()
 
-            # KPI
             self.stock_card.configure(text=str(total_stock))
             self.sales_card.configure(text=str(len(sales_data)))
             self.sending_card.configure(text=str(len(sending_data)))
             self.returns_card.configure(text=str(len(returns_data)))
 
-            # Alerts
             self.alert_list.delete("0.0", "end")
+
             for row in aggregated_stock:
                 if row["total_quantity"] < InventoryConfig.LOW_STOCK_THRESHOLD:
                     self.alert_list.insert(
@@ -241,29 +238,11 @@ class Dashboard:
                         f"{row['name']} ({row['colour']}) LOW: {row['total_quantity']}\n"
                     )
 
-            # Table
-            for item in self.inventory_table.get_children():
-                self.inventory_table.delete(item)
-
-            for row in aggregated_stock:
-                self.inventory_table.insert(
-                    "",
-                    "end",
-                    values=(
-                        row["name"],
-                        row["brand"],
-                        row["description"],
-                        row["colour"],
-                        row["total_quantity"],
-                        row["created_at"]
-                    )
-                )
-
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
     # ==============================
-    # 🔄 NAVIGATION
+    # NAVIGATION
     # ==============================
 
     def clear_content(self):

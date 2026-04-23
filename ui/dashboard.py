@@ -52,6 +52,8 @@ class Dashboard:
             "users": ctk.CTkImage(Image.open("public/users.png"), size=(20, 20)),
             "products": ctk.CTkImage(Image.open("public/product-catalog.png"), size=(20, 20)),
             "logout": ctk.CTkImage(Image.open("public/check-out.png"), size=(20, 20)),
+            "moon": ctk.CTkImage(Image.open("public/moon.png"), size=(20, 20)),
+            "light": ctk.CTkImage(Image.open("public/light.png"), size=(20, 20)),
 
             # KPI ICONS
             "total-stock": ctk.CTkImage(Image.open("public/total-stock.png"), size=(28, 28)),
@@ -134,13 +136,30 @@ class Dashboard:
         if self.user["role"] == "admin":
             self.create_sidebar_button("Logs", self.icons["logs"], self.open_logs, "logs").pack(fill="x", padx=10, pady=5)
 
-        ctk.CTkButton(self.sidebar, text="🌙 / ☀ Theme",
-                      fg_color="transparent", text_color="gray",
-                      hover_color="#003F7D",
-                      command=self.toggle_theme).pack(fill="x", padx=10, pady=5)
+        current_theme_is_dark = theme_manager.is_dark()
 
-        ctk.CTkButton(self.sidebar, text="🔓 Logout",
-                      fg_color="red", command=self.logout).pack(fill="x", padx=10, pady=20)
+        theme_icon = self.icons["light"] if current_theme_is_dark else self.icons["moon"]
+        theme_text = "" if current_theme_is_dark else ""
+
+        ctk.CTkButton(
+            self.sidebar,
+            text=theme_text,
+            image=theme_icon,
+            compound="left",
+            fg_color="transparent",
+            text_color="gray",
+            hover_color="#003F7D",
+            command=self.toggle_theme,
+            anchor="w"
+        ).pack(fill="x", padx=10, pady=5)
+
+        ctk.CTkButton(self.sidebar, text="  Logout",
+                image=self.icons["logout"],
+                compound="left",
+                fg_color="red",
+                hover_color="#B91C1C",
+                command=self.logout
+            ).pack(fill="x", padx=10, pady=20)
     # ==============================
     # 🏠 DASHBOARD VIEW
     # ==============================

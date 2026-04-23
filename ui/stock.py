@@ -9,6 +9,7 @@ from PIL import Image
 
 
 class StockPage:
+    
     def __init__(self, root, db, user):
         self.root = root
         self.db = db
@@ -30,6 +31,12 @@ class StockPage:
         self.load_table()
 
     def build_ui(self):
+        ctk.CTkLabel(
+            self.frame,
+            text="Stock Management",
+            font=("Arial", 18)
+        ).pack(pady=10)
+         
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 

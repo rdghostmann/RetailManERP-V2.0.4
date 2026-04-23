@@ -35,6 +35,12 @@ class PlazaPage:
         self.load_table()
 
     def build_ui(self):
+        ctk.CTkLabel(
+            self.frame,
+            text="Plaza - Record Sales",
+            font=("Arial", 18)
+        ).pack(pady=10)
+         
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 

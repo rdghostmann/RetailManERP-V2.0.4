@@ -1,7 +1,8 @@
+# ui/login.py
 import customtkinter as ctk
 from tkinter import messagebox
 from services.auth_service import AuthService
-
+from utils.session_manager import SessionManager  # ✅ ADD THIS
 
 class LoginWindow:
     def __init__(self, db):
@@ -51,13 +52,18 @@ class LoginWindow:
             self.password_entry.delete(0, 'end')
             return
 
-        # Verify password for returning users
+        # ✅ SUCCESS LOGIN → CREATE SESSION
         if status == "SUCCESS":
+            SessionManager.login(user)  # 🔥 KEY LINE
+
             messagebox.showinfo("Success", f"Welcome {user['name']}")
+
             self.root.destroy()
+
             from ui.dashboard import Dashboard
-            dashboard = Dashboard(self.db, user)
+            dashboard = Dashboard(self.db, user)  # (optional: later remove user param)
             dashboard.run()
+
         else:
             messagebox.showerror("Error", "Login failed")
 

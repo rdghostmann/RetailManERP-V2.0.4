@@ -33,6 +33,12 @@ class ReturnsPage:
         self.load_table()
 
     def build_ui(self):
+        ctk.CTkLabel(
+            self.frame,
+            text="Plaza Returns Management",
+            font=("Arial", 18)
+        ).pack(pady=10)
+         
         # Form
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)

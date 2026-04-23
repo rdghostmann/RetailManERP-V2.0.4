@@ -1,8 +1,9 @@
+# ui/logs.py
 import customtkinter as ctk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
+import pandas as pd
 
 from app.config import UIConfig
-
 
 class LogsPage:
     def __init__(self, root, db, user):
@@ -32,11 +33,14 @@ class LogsPage:
         )
         header.pack(pady=10)
 
-        # 🔍 Search Bar (future-ready)
+        # 🔍 Search + Export
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=5)
 
-        self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="Search by user or action...")
+        self.search_entry = ctk.CTkEntry(
+            search_frame,
+            placeholder_text="Search by user or action..."
+        )
         self.search_entry.pack(side="left", fill="x", expand=True, padx=5)
 
         ctk.CTkButton(
@@ -45,20 +49,28 @@ class LogsPage:
             command=self.load_logs
         ).pack(side="left", padx=5)
 
-        # 📊 Logs Table
+        ctk.CTkButton(
+            search_frame,
+            text="📥 Export Excel",
+            fg_color="#16A34A",
+            hover_color="#15803D",
+            command=self.export_to_excel
+        ).pack(side="left", padx=5)
+
+        # 📊 Logs Table (Record ID removed)
         self.tree = ttk.Treeview(
             self.frame,
-            columns=("User", "Action", "Table", "Record ID", "Date"),
+            columns=("User", "Action", "Table", "Date"),
             show="headings"
         )
 
-        for col in ("User", "Action", "Table", "Record ID", "Date"):
+        for col in ("User", "Action", "Table", "Date"):
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=120)
+            self.tree.column(col, width=140)
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # 🎨 Styling for critical visibility
+        # 🎨 Styling
         self.tree.tag_configure("danger", background="#ffe5e5")
         self.tree.tag_configure("info", background="#e1effe")
 
@@ -90,6 +102,8 @@ class LogsPage:
                 """
                 data = self.db.fetch_all(query)
 
+            self.current_data = data  # store for export
+
             for log in data:
                 tag = "danger" if log["action"] == "DELETE" else "info"
 
@@ -100,7 +114,6 @@ class LogsPage:
                         log["name"],
                         log["action"],
                         log["table_name"],
-                        log["record_id"],
                         log["created_at"]
                     ),
                     tags=(tag,)
@@ -108,6 +121,41 @@ class LogsPage:
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
+
+    # ==============================
+    # 📤 EXPORT TO EXCEL
+    # ==============================
+    def export_to_excel(self):
+        try:
+            if not hasattr(self, "current_data") or not self.current_data:
+                messagebox.showwarning("No Data", "No logs available to export")
+                return
+
+            df = pd.DataFrame(self.current_data)
+
+            # Clean columns
+            df = df.rename(columns={
+                "name": "User",
+                "action": "Action",
+                "table_name": "Table",
+                "created_at": "Date"
+            })[["User", "Action", "Table", "Date"]]
+
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")],
+                title="Save Logs File"
+            )
+
+            if not file_path:
+                return
+
+            df.to_excel(file_path, index=False)
+
+            messagebox.showinfo("Success", "Logs exported successfully")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", str(e))
 
     # ==============================
     # ▶ ENTRY POINT

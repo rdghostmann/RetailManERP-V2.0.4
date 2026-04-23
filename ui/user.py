@@ -1,6 +1,6 @@
+# ui/users.py
 import customtkinter as ctk
 from tkinter import ttk, messagebox
-
 
 class UserPage:
     def __init__(self, root, db, current_user):
@@ -10,6 +10,7 @@ class UserPage:
 
         self.root = root
         self.db = db
+        self.current_user = current_user  # ✅ store current user
 
         self.frame = ctk.CTkFrame(root)
         self.frame.pack(fill="both", expand=True)
@@ -35,16 +36,26 @@ class UserPage:
         self.phone = ctk.CTkEntry(form, placeholder_text="Phone")
 
         self.role = ctk.CTkComboBox(form, values=["admin", "staff"])
-        self.role.set("staff")  # default
+        self.role.set("staff")
 
         self.name.pack(side="left", padx=5, expand=True, fill="x")
         self.phone.pack(side="left", padx=5, expand=True, fill="x")
         self.role.pack(side="left", padx=5)
 
+        # ➕ Create User Button
         ctk.CTkButton(
             form,
             text="Create User",
             command=self.create_user
+        ).pack(side="left", padx=5)
+
+        # ❌ Delete Button
+        ctk.CTkButton(
+            form,
+            text="Delete Selected",
+            fg_color="red",
+            hover_color="#B91C1C",
+            command=self.delete_user
         ).pack(side="left", padx=5)
 
         # ===== TABLE =====
@@ -57,7 +68,6 @@ class UserPage:
             show="headings"
         )
 
-        # Columns
         self.tree.heading("Name", text="Name")
         self.tree.heading("Phone", text="Phone")
         self.tree.heading("Role", text="Role")
@@ -66,7 +76,6 @@ class UserPage:
         self.tree.column("Phone", anchor="center", width=150)
         self.tree.column("Role", anchor="center", width=100)
 
-        # Scrollbar
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
 
@@ -95,7 +104,6 @@ class UserPage:
 
             messagebox.showinfo("Success", "User created")
 
-            # Clear inputs
             self.name.delete(0, "end")
             self.phone.delete(0, "end")
             self.role.set("staff")
@@ -106,17 +114,52 @@ class UserPage:
             messagebox.showerror("Error", str(e))
 
     # =========================
-    # LOAD USERS INTO TABLE
+    # DELETE USER
+    # =========================
+    def delete_user(self):
+        try:
+            selected = self.tree.selection()
+
+            if not selected:
+                raise ValueError("Please select a user to delete")
+
+            user_id = selected[0]
+
+            # 🚫 Prevent deleting yourself
+            if str(self.current_user["id"]) == str(user_id):
+                raise ValueError("You cannot delete your own account")
+
+            confirm = messagebox.askyesno(
+                "Confirm Delete",
+                "Are you sure you want to delete this user?"
+            )
+
+            if not confirm:
+                return
+
+            self.db.execute(
+                "DELETE FROM users WHERE id=%s",
+                (user_id,)
+            )
+
+            messagebox.showinfo("Success", "User deleted successfully")
+
+            self.load_users()
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # =========================
+    # LOAD USERS
     # =========================
     def load_users(self):
-        # Clear table
         for row in self.tree.get_children():
             self.tree.delete(row)
 
         users = self.db.fetch_all(
             """
-            SELECT id, name, phone, role 
-            FROM users 
+            SELECT id, name, phone, role
+            FROM users
             ORDER BY name ASC
             """
         )
@@ -125,7 +168,7 @@ class UserPage:
             self.tree.insert(
                 "",
                 "end",
-                iid=u["id"],  # enables future row actions
+                iid=u["id"],
                 values=(
                     u["name"],
                     u["phone"],

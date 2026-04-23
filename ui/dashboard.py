@@ -121,15 +121,18 @@ class Dashboard:
                      font=("Arial", 10), text_color="gray").pack()
 
         self.create_sidebar_button("Dashboard", self.icons["dashboard"], self.show_dashboard, "dashboard").pack(fill="x", padx=10, pady=5)
+       
+        if self.user["role"] == "admin" or self.user["role"] == "staff":
+            self.create_sidebar_button("Users", self.icons["users"], self.open_users, "users").pack(fill="x", padx=10, pady=5)
+            self.create_sidebar_button("Products", self.icons["products"], self.product_catalogue, "products").pack(fill="x", padx=10, pady=5)
+
         self.create_sidebar_button("Stock", self.icons["stock"], self.open_stock, "stock").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("Sending", self.icons["sending"], self.open_sending, "sending").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("Plaza", self.icons["plaza"], self.open_plaza, "plaza").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("Returns", self.icons["returns"], self.open_returns, "returns").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("Sending", self.icons["sending"], self.open_sending, "sending").pack(fill="x", padx=10, pady=5)
 
         if self.user["role"] == "admin":
             self.create_sidebar_button("Logs", self.icons["logs"], self.open_logs, "logs").pack(fill="x", padx=10, pady=5)
-            self.create_sidebar_button("Users", self.icons["users"], self.open_users, "users").pack(fill="x", padx=10, pady=5)
-            self.create_sidebar_button("Products", self.icons["products"], self.product_catalogue, "products").pack(fill="x", padx=10, pady=5)
 
         ctk.CTkButton(self.sidebar, text="🌙 / ☀ Theme",
                       fg_color="transparent", text_color="gray",

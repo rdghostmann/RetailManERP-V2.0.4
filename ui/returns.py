@@ -1,5 +1,8 @@
+# ui/returns.py
 import customtkinter as ctk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
+import pandas as pd
+from PIL import Image
 
 from services.returns_services import ReturnsService
 from services.product_service import ProductService
@@ -17,6 +20,12 @@ class ReturnsPage:
 
         self.fetched_sale = None
 
+        # ✅ Load export icon
+        self.export_icon = ctk.CTkImage(
+            Image.open("public/export-xlsx.png"),
+            size=(18, 18)
+        )
+
         self.frame = ctk.CTkFrame(root)
         self.frame.pack(fill="both", expand=True)
 
@@ -24,7 +33,7 @@ class ReturnsPage:
         self.load_table()
 
     def build_ui(self):
-        # Form for return entry
+        # Form
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
@@ -33,23 +42,45 @@ class ReturnsPage:
         self.imei_entry.pack(side="left", padx=5)
         self.imei_entry.bind("<KeyRelease>", lambda e: self.lookup_sale())
 
-        # Sale info display
+        # Sale info
         self.sale_info_label = ctk.CTkLabel(form, text="No sale found", text_color="gray")
         self.sale_info_label.pack(side="left", padx=5)
 
-        # Return quantity
-        self.return_qty_entry = ctk.CTkEntry(form, placeholder_text="Return Qty")
+        # 🔒 Fixed quantity = 1
+        self.return_qty_entry = ctk.CTkEntry(form, width=80)
+        self.return_qty_entry.insert(0, "1")
+        self.return_qty_entry.configure(state="disabled")
         self.return_qty_entry.pack(side="left", padx=5)
 
         # Reason
         self.reason_entry = ctk.CTkEntry(form, placeholder_text="Reason for return")
         self.reason_entry.pack(side="left", padx=5)
 
-        # Record Return button
-        ctk.CTkButton(form, text="Record Return", command=self.record_return).pack(side="left", padx=5)
+        # Record button
+        ctk.CTkButton(
+            form,
+            text="Record Return",
+            command=self.record_return
+        ).pack(side="left", padx=5)
 
-        # Table to display returns
-        self.tree = ttk.Treeview(self.frame, columns=("Product", "IMEI", "Colour", "Customer", "Returned Qty", "Reason"), show="headings")
+        # ✅ Export Button with Image
+        ctk.CTkButton(
+            form,
+            text=" Export Excel",
+            image=self.export_icon,
+            compound="left",
+            fg_color="#16A34A",
+            hover_color="#15803D",
+            command=self.export_to_excel
+        ).pack(side="left", padx=5)
+
+        # Table
+        self.tree = ttk.Treeview(
+            self.frame,
+            columns=("Product", "IMEI", "Colour", "Customer", "Returned Qty", "Reason"),
+            show="headings"
+        )
+
         for col in ("Product", "IMEI", "Colour", "Customer", "Returned Qty", "Reason"):
             self.tree.heading(col, text=col)
             self.tree.column(col, width=130)
@@ -57,9 +88,8 @@ class ReturnsPage:
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
     def lookup_sale(self):
-        """Fetch plaza sale details by IMEI"""
         imei = self.imei_entry.get().strip()
-        
+
         if not imei:
             self.fetched_sale = None
             self.sale_info_label.configure(text="No sale found", text_color="gray")
@@ -67,7 +97,7 @@ class ReturnsPage:
 
         try:
             sale = self.returns_service.get_plaza_sale_by_imei(imei)
-            
+
             if not sale:
                 self.fetched_sale = None
                 self.sale_info_label.configure(text="IMEI not found in sales", text_color="red")
@@ -86,11 +116,7 @@ class ReturnsPage:
             if not self.fetched_sale:
                 raise ValueError("Please enter a valid product IMEI")
 
-            return_qty_str = self.return_qty_entry.get().strip()
-            if not return_qty_str:
-                raise ValueError("Return quantity is required")
-
-            return_qty = int(return_qty_str)
+            return_qty = 1
             Validators.validate_quantity(return_qty)
 
             self.returns_service.create_return(
@@ -101,14 +127,13 @@ class ReturnsPage:
             )
 
             messagebox.showinfo("Success", "Return recorded successfully")
-            
-            # Clear form
+
+            # Reset form
             self.imei_entry.delete(0, "end")
-            self.return_qty_entry.delete(0, "end")
             self.reason_entry.delete(0, "end")
             self.fetched_sale = None
             self.sale_info_label.configure(text="No sale found", text_color="gray")
-            
+
             self.load_table()
 
         except Exception as e:
@@ -129,3 +154,42 @@ class ReturnsPage:
                 row["quantity"],
                 row["reason"]
             ))
+
+    # ==============================
+    # 📤 EXPORT TO EXCEL
+    # ==============================
+    def export_to_excel(self):
+        try:
+            data = self.returns_service.get_all()
+
+            if not data:
+                messagebox.showwarning("No Data", "No return data to export")
+                return
+
+            df = pd.DataFrame(data)
+
+            # Clean column names
+            df = df.rename(columns={
+                "product_name": "Product",
+                "imei": "IMEI",
+                "colour": "Colour",
+                "customer_name": "Customer",
+                "quantity": "Returned Qty",
+                "reason": "Reason"
+            })
+
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")],
+                title="Save Excel File"
+            )
+
+            if not file_path:
+                return
+
+            df.to_excel(file_path, index=False)
+
+            messagebox.showinfo("Success", "Returns exported successfully")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", str(e))

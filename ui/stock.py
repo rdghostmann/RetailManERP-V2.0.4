@@ -5,6 +5,7 @@ from services.stock_service import StockService
 from services.product_service import ProductService
 from utils.validators import Validators
 import pandas as pd
+from PIL import Image
 
 
 class StockPage:
@@ -15,6 +16,12 @@ class StockPage:
 
         self.stock_service = StockService(db)
         self.product_service = ProductService(db)
+
+        # ✅ Load icon
+        self.export_icon = ctk.CTkImage(
+            Image.open("public/export-xlsx.png"),
+            size=(20, 20)
+        )
 
         self.frame = ctk.CTkFrame(root)
         self.frame.pack(fill="both", expand=True)
@@ -31,7 +38,11 @@ class StockPage:
         product_names = [p["name"] for p in products] if products else ["No Products"]
 
         self.product_var = ctk.StringVar()
-        self.product_dropdown = ctk.CTkComboBox(form, values=product_names, variable=self.product_var)
+        self.product_dropdown = ctk.CTkComboBox(
+            form,
+            values=product_names,
+            variable=self.product_var
+        )
         self.product_dropdown.pack(side="left", padx=5)
 
         self.imei_entry = ctk.CTkEntry(form, placeholder_text="IMEI")
@@ -40,11 +51,18 @@ class StockPage:
         self.colour_entry = ctk.CTkEntry(form, placeholder_text="Colour")
         self.colour_entry.pack(side="left", padx=5)
 
-        ctk.CTkButton(form, text="Add Stock", command=self.add_stock).pack(side="left", padx=5)
-
         ctk.CTkButton(
             form,
-            text="📥 Export Excel",
+            text="Add Stock",
+            command=self.add_stock
+        ).pack(side="left", padx=5)
+
+        # ✅ Export button with icon
+        ctk.CTkButton(
+            form,
+            text="  Export Excel",
+            image=self.export_icon,
+            compound="left",
             fg_color="#16A34A",
             hover_color="#15803D",
             command=self.export_to_excel
@@ -134,10 +152,8 @@ class StockPage:
                 messagebox.showwarning("No Data", "No stock data to export")
                 return
 
-            # Convert to DataFrame
             df = pd.DataFrame(data)
 
-            # Rename columns for clean Excel output
             df = df.rename(columns={
                 "product_name": "Product",
                 "imei": "IMEI",
@@ -145,7 +161,6 @@ class StockPage:
                 "quantity": "Quantity"
             })
 
-            # File dialog
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".xlsx",
                 filetypes=[("Excel files", "*.xlsx")],

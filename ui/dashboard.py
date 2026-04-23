@@ -182,32 +182,41 @@ class Dashboard:
         self.sending_card = self.create_card(self.kpi_frame, "Dispatch", "0", self.icons["dispatch"])
         self.returns_card = self.create_card(self.kpi_frame, "Returns", "0", self.icons["returns_kpi"])
 
-
-        # Alerts
-        self.alert_frame = ctk.CTkFrame(self.content)
-        self.alert_frame.pack(fill="x", padx=10, pady=10)
-
-        ctk.CTkLabel(self.alert_frame, text="⚠️ Alerts", font=("Arial", 16)).pack(anchor="w", padx=10)
-
-        self.alert_list = ctk.CTkTextbox(self.alert_frame, height=120)
-        self.alert_list.pack(fill="x", padx=10, pady=5)
-
-        # Inventory Table
+        # 📦 Inventory Table (UPDATED)
         self.inventory_frame = ctk.CTkFrame(self.content)
         self.inventory_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkLabel(self.inventory_frame, text="📦 Inventory Overview", font=("Arial", 16)).pack(anchor="w", padx=10)
+        ctk.CTkLabel(
+            self.inventory_frame,
+            text="📦 Inventory Overview",
+            font=("Arial", 16)
+        ).pack(anchor="w", padx=10)
+
+        table_container = ctk.CTkFrame(self.inventory_frame)
+        table_container.pack(fill="both", expand=True)
 
         self.inventory_table = ttk.Treeview(
-            self.inventory_frame,
-            columns=("Name", "Brand", "Description", "Colour", "Qty", "Created"),
+            table_container,
+            columns=("Name", "Brand", "Description", "Qty"),
             show="headings"
         )
 
-        for col in ("Name", "Brand", "Description", "Colour", "Qty", "Created"):
+        for col in ("Name", "Brand", "Description", "Qty"):
             self.inventory_table.heading(col, text=col)
+            self.inventory_table.column(col, width=200, anchor="w")
 
-        self.inventory_table.pack(fill="both", expand=True, padx=10, pady=10)
+        # Scrollbars
+        y_scroll = ttk.Scrollbar(table_container, orient="vertical", command=self.inventory_table.yview)
+        x_scroll = ttk.Scrollbar(table_container, orient="horizontal", command=self.inventory_table.xview)
+
+        self.inventory_table.configure(
+            yscrollcommand=y_scroll.set,
+            xscrollcommand=x_scroll.set
+        )
+
+        self.inventory_table.pack(side="top", fill="both", expand=True)
+        x_scroll.pack(side="bottom", fill="x")
+        y_scroll.pack(side="right", fill="y")
 
     # ==============================
     # 🧮 KPI CARD
@@ -240,8 +249,6 @@ class Dashboard:
     def load_dashboard_data(self):
         try:
             stock_data = self.stock_service.get_all_stock()
-            aggregated_stock = self.stock_service.get_aggregated_stock()
-
             total_stock = sum(row["quantity"] for row in stock_data)
 
             sales_data = self.plaza_service.get_all()
@@ -254,36 +261,47 @@ class Dashboard:
             self.sending_card.configure(text=str(len(sending_data)))
             self.returns_card.configure(text=str(len(returns_data)))
 
-            # Alerts
-            self.alert_list.delete("0.0", "end")
-            for row in aggregated_stock:
-                if row["total_quantity"] < InventoryConfig.LOW_STOCK_THRESHOLD:
-                    self.alert_list.insert(
-                        "end",
-                        f"{row['name']} ({row['colour']}) LOW: {row['total_quantity']}\n"
-                    )
-
-            # Table
+            # 🔄 CLEAR TABLE
             for item in self.inventory_table.get_children():
                 self.inventory_table.delete(item)
 
-            for row in aggregated_stock:
+            # ✅ AGGREGATE UNIQUE PRODUCTS
+            aggregated = {}
+
+            for row in stock_data:
+                key = row["product_id"]
+
+                if key not in aggregated:
+                    product = self.db.fetch_one(
+                        "SELECT name, brand, description FROM products WHERE id=%s",
+                        (row["product_id"],)
+                    )
+
+                    aggregated[key] = {
+                        "name": product["name"] if product else "Unknown",
+                        "brand": product["brand"] if product else "-",
+                        "description": product["description"] if product else "-",
+                        "quantity": 0
+                    }
+
+                aggregated[key]["quantity"] += row["quantity"]
+
+            # ✅ INSERT INTO TABLE
+            for item in aggregated.values():
                 self.inventory_table.insert(
                     "",
                     "end",
                     values=(
-                        row["name"],
-                        row["brand"],
-                        row["description"],
-                        row["colour"],
-                        row["total_quantity"],
-                        row["created_at"]
+                        item["name"],
+                        item["brand"],
+                        item["description"],
+                        item["quantity"]
                     )
                 )
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
-
+  
     # ==============================
     # 🔄 NAVIGATION
     # ==============================

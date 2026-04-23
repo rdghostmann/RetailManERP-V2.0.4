@@ -1,3 +1,4 @@
+#ui/product_catalogue.py
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 

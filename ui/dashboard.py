@@ -266,26 +266,43 @@ class Dashboard:
                 self.inventory_table.delete(item)
 
             # ✅ AGGREGATE UNIQUE PRODUCTS
+            # ✅ AGGREGATE UNIQUE PRODUCTS (FIXED)
             aggregated = {}
 
             for row in stock_data:
                 key = row["product_id"]
 
                 if key not in aggregated:
-                    product = self.db.fetch_one(
-                        "SELECT name, brand, description FROM products WHERE id=%s",
-                        (row["product_id"],)
-                    )
-
                     aggregated[key] = {
-                        "name": product["name"] if product else "Unknown",
-                        "brand": product["brand"] if product else "-",
-                        "description": product["description"] if product else "-",
+                        "name": row["name"],
+                        "brand": row["brand"],
+                        "description": row["description"],
                         "quantity": 0
                     }
 
                 aggregated[key]["quantity"] += row["quantity"]
+            # aggregated = {}
+            # for row in stock_data:
+            #     product_id = row.get("product_id")  # safer access
 
+            #     if not product_id:
+            #         continue  # skip bad records instead of crashing
+
+            #     if product_id not in aggregated:
+            #         product = self.db.fetch_one(
+            #             "SELECT name, brand, description FROM products WHERE id=%s",
+            #             (product_id,)
+            #         )
+
+            #         aggregated[product_id] = {
+            #             "name": product["name"] if product else "Unknown",
+            #             "brand": product["brand"] if product else "-",
+            #             "description": product["description"] if product else "-",
+            #             "quantity": 0
+            #         }
+
+            #     aggregated[product_id]["quantity"] += row.get("quantity", 0)
+                
             # ✅ INSERT INTO TABLE
             for item in aggregated.values():
                 self.inventory_table.insert(

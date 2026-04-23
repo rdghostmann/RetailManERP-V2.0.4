@@ -85,15 +85,12 @@ class StockService:
     def get_all_stock(self):
         query = """
             SELECT 
-                s.id,
-                p.name AS product_name,
-                s.imei,
-                s.colour,
-                s.quantity,
-                s.created_at
-            FROM stock s
-            JOIN products p ON s.product_id = p.id
-            ORDER BY s.created_at DESC
+            s.*, 
+            p.name, 
+            p.brand, 
+            p.description
+        FROM stock s
+        JOIN products p ON s.product_id = p.id
         """
         return self.db.fetch_all(query)
 

@@ -1,3 +1,4 @@
+#app/config.py
 """
 Global configuration module for RetailMan V1.2 (Improved)
 
@@ -18,8 +19,8 @@ from pymysql.cursors import DictCursor
 @dataclass(frozen=True)
 class Environment:
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
-    APP_NAME: str = "RetailMan V1.2"
-    VERSION: str = "1.2.0"
+    APP_NAME: str = "RetailMan V2.1"
+    VERSION: str = "2.1.2"
 
 
 ENV = Environment()

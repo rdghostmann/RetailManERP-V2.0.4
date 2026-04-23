@@ -1,13 +1,12 @@
-# ui/dashboard.py
+#ui/dashboard.py
 import customtkinter as ctk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import sys
 import os
 
 from ui.logs import LogsPage
 from ui.prduct_catalogue import ProductCataloguePage
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 
 from services.stock_service import StockService
 from services.plaza_services import PlazaService
@@ -22,6 +21,7 @@ from ui.returns import ReturnsPage
 from ui.sending import SendingPage
 from ui.user import UserPage
 
+
 class Dashboard:
     def __init__(self, db, user):
         self.db = db
@@ -33,7 +33,6 @@ class Dashboard:
         self.sending_service = SendingService(db)
         self.returns_service = ReturnsService(db)
 
-        # Set appearance mode based on theme
         ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
 
         self.root = ctk.CTk()
@@ -51,11 +50,9 @@ class Dashboard:
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
 
-        # Sidebar
         self.sidebar = ctk.CTkFrame(self.root, width=200)
         self.sidebar.grid(row=0, column=0, sticky="ns")
 
-        # Content
         self.content = ctk.CTkFrame(self.root)
         self.content.grid(row=0, column=1, sticky="nsew")
 
@@ -90,32 +87,31 @@ class Dashboard:
         self.build_sidebar()
 
     def build_sidebar(self):
-        # Header
         header = ctk.CTkFrame(self.sidebar)
         header.pack(fill="x", padx=10, pady=10)
-        
-        ctk.CTkLabel(header, text="RetailMan", font=("Arial", 18)).pack()
-        ctk.CTkLabel(header, text=f"Role: {self.user['role'].title()}", font=("Arial", 10), text_color="gray").pack()
 
-        # Navigation buttons
+        ctk.CTkLabel(header, text="RetailMan", font=("Arial", 18)).pack()
+        ctk.CTkLabel(
+            header,
+            text=f"Role: {self.user['role'].title()}",
+            font=("Arial", 10),
+            text_color="gray"
+        ).pack()
+
         self.create_sidebar_button("🏠 Dashboard", self.show_dashboard, "dashboard").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("📦 Stock", self.open_stock, "stock").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("🚚 Sending", self.open_sending, "sending").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("🛍️  Plaza", self.open_plaza, "plaza").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("↩️  Returns", self.open_returns, "returns").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("🛍️ Plaza", self.open_plaza, "plaza").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("↩️ Returns", self.open_returns, "returns").pack(fill="x", padx=10, pady=5)
 
-        # Admin-only features
         if self.user["role"] == "admin":
             self.create_sidebar_button("📊 Logs", self.open_logs, "logs").pack(fill="x", padx=10, pady=5)
             self.create_sidebar_button("👥 Users", self.open_users, "users").pack(fill="x", padx=10, pady=5)
-            self.create_sidebar_button("📋 Products Cataloge", self.product_catalogue, "products").pack(fill="x", padx=10, pady=5)
+            self.create_sidebar_button("📋 Products", self.product_catalogue, "products").pack(fill="x", padx=10, pady=5)
 
-        # Theme toggle button
-        theme_icon = "🌙" if theme_manager.is_dark() else "☀️"
-        theme_text = f"{theme_icon} Theme"
         ctk.CTkButton(
             self.sidebar,
-            text=theme_text,
+            text="🌙 / ☀ Theme",
             fg_color="transparent",
             text_color="gray",
             hover_color="#003F7D",
@@ -123,7 +119,6 @@ class Dashboard:
             anchor="w"
         ).pack(fill="x", padx=10, pady=5)
 
-        # Logout button
         ctk.CTkButton(
             self.sidebar,
             text="🔓 Logout",
@@ -131,37 +126,53 @@ class Dashboard:
             command=self.logout
         ).pack(fill="x", padx=10, pady=20)
 
-        # ==============================
+    # ==============================
     # 🏠 DASHBOARD VIEW
     # ==============================
 
     def build_dashboard_home(self):
         self.clear_content()
 
-        self.header = ctk.CTkLabel(
+        ctk.CTkLabel(
             self.content,
             text=f"Welcome, {self.user['name']} ({self.user['role'].title()})",
             font=("Arial", 20)
-        )
-        self.header.pack(pady=10)
+        ).pack(pady=10)
 
-        # KPI Container
+        # KPI
         self.kpi_frame = ctk.CTkFrame(self.content)
         self.kpi_frame.pack(fill="x", padx=10, pady=10)
 
         self.stock_card = self.create_card(self.kpi_frame, "📦 Total Stock", "0")
-        self.sales_card = self.create_card(self.kpi_frame, "🛍️  Sales", "0")
+        self.sales_card = self.create_card(self.kpi_frame, "🛍️ Sales", "0")
         self.sending_card = self.create_card(self.kpi_frame, "🚚 Dispatch", "0")
-        self.returns_card = self.create_card(self.kpi_frame, "↩️  Returns", "0")
+        self.returns_card = self.create_card(self.kpi_frame, "↩️ Returns", "0")
 
-        # Alerts Section
+        # Alerts
         self.alert_frame = ctk.CTkFrame(self.content)
-        self.alert_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.alert_frame.pack(fill="x", padx=10, pady=10)
 
-        ctk.CTkLabel(self.alert_frame, text="⚠️  Critical Alerts", font=("Arial", 16)).pack(anchor="w", padx=10, pady=10)
+        ctk.CTkLabel(self.alert_frame, text="⚠️ Alerts", font=("Arial", 16)).pack(anchor="w", padx=10)
 
-        self.alert_list = ctk.CTkTextbox(self.alert_frame, height=200)
-        self.alert_list.pack(fill="both", expand=True, padx=10, pady=10)
+        self.alert_list = ctk.CTkTextbox(self.alert_frame, height=120)
+        self.alert_list.pack(fill="x", padx=10, pady=5)
+
+        # Inventory Table
+        self.inventory_frame = ctk.CTkFrame(self.content)
+        self.inventory_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        ctk.CTkLabel(self.inventory_frame, text="📦 Inventory Overview", font=("Arial", 16)).pack(anchor="w", padx=10)
+
+        self.inventory_table = ttk.Treeview(
+            self.inventory_frame,
+            columns=("Name", "Brand", "Description", "Colour", "Qty", "Created"),
+            show="headings"
+        )
+
+        for col in ("Name", "Brand", "Description", "Colour", "Qty", "Created"):
+            self.inventory_table.heading(col, text=col)
+
+        self.inventory_table.pack(fill="both", expand=True, padx=10, pady=10)
 
     # ==============================
     # 🧮 KPI CARD
@@ -171,9 +182,7 @@ class Dashboard:
         card = ctk.CTkFrame(parent, width=150, height=80)
         card.pack(side="left", padx=10, pady=10)
 
-        label = ctk.CTkLabel(card, text=title)
-        label.pack()
-
+        ctk.CTkLabel(card, text=title).pack()
         value_label = ctk.CTkLabel(card, text=value, font=("Arial", 18))
         value_label.pack()
 
@@ -182,117 +191,109 @@ class Dashboard:
     # ==============================
     # 📊 DATA LOADING
     # ==============================
+
     def load_dashboard_data(self):
         try:
-            # =========================
-            # 📦 RAW STOCK (for totals)
-            # =========================
             stock_data = self.stock_service.get_all_stock()
-            total_stock = sum(row["quantity"] for row in stock_data)
-
-            # =========================
-            # 📈 AGGREGATED (for alerts)
-            # =========================
             aggregated_stock = self.stock_service.get_aggregated_stock()
 
-            # =========================
-            # Other modules
-            # =========================
+            total_stock = sum(row["quantity"] for row in stock_data)
+
             sales_data = self.plaza_service.get_all()
+            sending_data = self.sending_service.get_all()
+            returns_data = self.returns_service.get_all()
 
-            sending_data = []
-            try:
-                sending_data = self.sending_service.get_all()
-            except Exception:
-                pass
-
-            returns_data = []
-            try:
-                returns_data = self.returns_service.get_all()
-            except Exception:
-                pass
-
-            # =========================
-            # Dashboard Cards
-            # =========================
+            # KPI
             self.stock_card.configure(text=str(total_stock))
             self.sales_card.configure(text=str(len(sales_data)))
             self.sending_card.configure(text=str(len(sending_data)))
             self.returns_card.configure(text=str(len(returns_data)))
 
-            # =========================
-            # Alerts (LOW STOCK)
-            # =========================
+            # Alerts
             self.alert_list.delete("0.0", "end")
-
             for row in aggregated_stock:
                 if row["total_quantity"] < InventoryConfig.LOW_STOCK_THRESHOLD:
                     self.alert_list.insert(
                         "end",
-                        f"LOW STOCK: {row['product_name']} ({row['colour']}) → {row['total_quantity']} units\n"
+                        f"{row['name']} ({row['colour']}) LOW: {row['total_quantity']}\n"
                     )
+
+            # Table
+            for item in self.inventory_table.get_children():
+                self.inventory_table.delete(item)
+
+            for row in aggregated_stock:
+                self.inventory_table.insert(
+                    "",
+                    "end",
+                    values=(
+                        row["name"],
+                        row["brand"],
+                        row["description"],
+                        row["colour"],
+                        row["total_quantity"],
+                        row["created_at"]
+                    )
+                )
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
+
+    # ==============================
+    # 🔄 NAVIGATION
+    # ==============================
 
     def clear_content(self):
         for widget in self.content.winfo_children():
             widget.destroy()
 
     def show_dashboard(self):
-        self.active_tab = "dashboard"
+        self.set_active_tab("dashboard", lambda: None)
         self.build_dashboard_home()
         self.load_dashboard_data()
 
     def open_stock(self):
-        self.active_tab = "stock"
+        self.set_active_tab("stock", lambda: None)
         self.clear_content()
         StockPage(self.content, self.db, self.user)
 
     def open_plaza(self):
-        self.active_tab = "plaza"
+        self.set_active_tab("plaza", lambda: None)
         self.clear_content()
         PlazaPage(self.content, self.db, self.user)
 
     def open_sending(self):
-        self.active_tab = "sending"
+        self.set_active_tab("sending", lambda: None)
         self.clear_content()
         SendingPage(self.content, self.db, self.user)
 
     def open_returns(self):
-        self.active_tab = "returns"
+        self.set_active_tab("returns", lambda: None)
         self.clear_content()
         ReturnsPage(self.content, self.db, self.user)
 
     def open_logs(self):
-        self.active_tab = "logs"
+        self.set_active_tab("logs", lambda: None)
         self.clear_content()
-        LogsPage(self.content, self.db , self.user)
+        LogsPage(self.content, self.db, self.user)
+
     def open_users(self):
-        self.active_tab = "users"
+        self.set_active_tab("users", lambda: None)
         self.clear_content()
         UserPage(self.content, self.db, self.user)
-    def product_catalogue(self):
-        self.active_tab = "products"
-        self.clear_content()
-        ProductCataloguePage(self.content, self.db , self.user)
 
-    def not_implemented(self):
-        messagebox.showinfo("Info", "Module not implemented yet")
+    def product_catalogue(self):
+        self.set_active_tab("products", lambda: None)
+        self.clear_content()
+        ProductCataloguePage(self.content, self.db, self.user)
 
     def toggle_theme(self):
-        """Toggle between dark and light theme"""
         theme_manager.toggle_theme()
-        new_mode = "dark" if theme_manager.is_dark() else "light"
-        ctk.set_appearance_mode(new_mode)
+        ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
         self.refresh_sidebar()
 
     def logout(self):
         self.root.destroy()
-
-    # ==============================
-    # ▶ RUN
-    # ==============================
 
     def run(self):
         self.root.mainloop()

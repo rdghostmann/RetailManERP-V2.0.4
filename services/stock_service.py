@@ -102,15 +102,18 @@ class StockService:
     # =========================
     def get_aggregated_stock(self):
         query = """
-            SELECT 
-                p.name AS product_name,
-                s.colour,
-                SUM(s.quantity) AS total_quantity
-            FROM stock s
-            JOIN products p ON s.product_id = p.id
-            GROUP BY s.product_id, s.colour
-            ORDER BY p.name ASC
-        """
+        SELECT 
+            p.name,
+            p.brand,
+            p.description,
+            s.colour,
+            SUM(s.quantity) AS total_quantity,
+            MIN(s.created_at) AS created_at
+        FROM stock s
+        JOIN products p ON s.product_id = p.id
+        GROUP BY p.name, p.brand, p.description, s.colour
+        ORDER BY p.name
+    """
         return self.db.fetch_all(query)
 
     # =========================

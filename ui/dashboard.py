@@ -57,8 +57,6 @@ class Dashboard:
 
         # Disable resize if configured
         self.root.resizable(UIConfig.RESIZABLE, UIConfig.RESIZABLE)
-        # self.root.geometry(f"{UIConfig.WINDOW_WIDTH}x{UIConfig.WINDOW_HEIGHT}")
-        # self.root.resizable(False, False)
 
          # ICONS
         self.icons = {

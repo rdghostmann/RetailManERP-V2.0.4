@@ -106,9 +106,9 @@ class UIConfig:
     WINDOW_HEIGHT = 900
 
     # 🖥️ Window Behavior
-    FULLSCREEN = False          # true fullscreen (no title bar)
+    FULLSCREEN = True          # true fullscreen (no title bar)
     MAXIMIZED = True            # recommended
-    RESIZABLE = False           # disable manual resizing
+    RESIZABLE = True           # disable manual resizing
 
     FONT = {
         "family": "JetBrains Mono",

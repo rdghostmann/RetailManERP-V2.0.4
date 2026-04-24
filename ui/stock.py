@@ -7,7 +7,6 @@ from utils.validators import Validators
 import pandas as pd
 from PIL import Image
 
-
 class StockPage:
 
     def __init__(self, root, db, user):
@@ -36,18 +35,18 @@ class StockPage:
         self.load_table()
 
     # =========================
+    # 🔐 IMEI INPUT VALIDATION
+    # =========================
+    def validate_imei_input(self, value):
+        return (value.isdigit() and len(value) <= 15) or value == ""
+
+    # =========================
     # UI
     # =========================
     def build_ui(self):
-        # =========================
-        # 🎨 TABLE STYLE
-        # =========================
         style = ttk.Style()
-
-        # Use default theme that supports styling
         style.theme_use("default")
 
-        # Header style
         style.configure(
             "Treeview.Heading",
             font=("Arial", 11, "bold"),
@@ -55,7 +54,6 @@ class StockPage:
             relief="solid"
         )
 
-        # Table cells
         style.configure(
             "Treeview",
             rowheight=28,
@@ -63,11 +61,10 @@ class StockPage:
             relief="solid"
         )
 
-        # Optional: grid-like borders
         style.map(
             "Treeview",
             background=[("selected", "#2563EB")]
-        ) 
+        )
 
         ctk.CTkLabel(
             self.frame,
@@ -75,10 +72,12 @@ class StockPage:
             font=("Arial", 18)
         ).pack(pady=10)
 
+        # =========================
+        # FORM
+        # =========================
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
-        # Products dropdown
         products = self.product_service.get_all()
         self.product_map = {p["name"]: p["id"] for p in products} if products else {}
 
@@ -90,11 +89,7 @@ class StockPage:
         )
         self.product_dropdown.pack(side="left", padx=5)
 
-        # IMEI validation function
-        def validate_imei_input(self, value):
-            return value.isdigit() and len(value) <= 15 or value == ""
-
-        # Register validation
+        # ✅ IMEI VALIDATION
         vcmd = (self.root.register(self.validate_imei_input), "%P")
 
         self.imei_entry = ctk.CTkEntry(
@@ -114,10 +109,9 @@ class StockPage:
             command=self.add_stock
         ).pack(side="left", padx=5)
 
-        # Export button
         ctk.CTkButton(
             form,
-            text="  Export Excel",
+            text=" Export Excel",
             image=self.export_icon,
             compound="left",
             fg_color="#16A34A",
@@ -126,7 +120,7 @@ class StockPage:
         ).pack(side="left", padx=5)
 
         # =========================
-        # 🔍 SEARCH BAR
+        # 🔍 SEARCH
         # =========================
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
@@ -155,9 +149,6 @@ class StockPage:
             style="Treeview"
         )
 
-        style.theme_use("default")
-
-        # Sortable headers
         for col in ("Product", "IMEI", "Colour", "Qty"):
             self.tree.heading(
                 col,
@@ -186,6 +177,9 @@ class StockPage:
 
             if not imei:
                 raise ValueError("IMEI is required")
+
+            if len(imei) != 15:
+                raise ValueError("IMEI must be exactly 15 digits")
 
             if not colour:
                 raise ValueError("Colour is required")

@@ -10,20 +10,20 @@ class LoginWindow:
         self.auth = AuthService(db)
 
         self.root = ctk.CTk()
-        self.root.title("RetailMan Login")
+        self.root.title("RetailMan ERP Login")
         self.root.geometry("400x350")
 
         self.build_ui()
 
+ # Phone validation function
+    def validate_phone_input(self, value):
+        return value.isdigit() and len(value) <= 11 or value == ""
+        
     def build_ui(self):
         ctk.CTkLabel(self.root, text="RetailMan V1.2", font=("Arial", 20)).pack(pady=20)
 
         self.name_entry = ctk.CTkEntry(self.root, placeholder_text="Name")
         self.name_entry.pack(pady=10)
-
-        # Phone validation function
-        def validate_phone_input(self, value):
-            return value.isdigit() and len(value) <= 11 or value == ""
 
         # Register validation
         vcmd = (self.root.register(self.validate_phone_input), "%P")

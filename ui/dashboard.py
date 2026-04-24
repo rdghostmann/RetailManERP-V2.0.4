@@ -3,6 +3,8 @@ import customtkinter as ctk
 from tkinter import messagebox, ttk
 import sys
 import os
+from utils.resource_path import resource_path
+
 
 from ui.logs import LogsPage
 from ui.prduct_catalogue import ProductCataloguePage
@@ -58,26 +60,27 @@ class Dashboard:
         # Disable resize if configured
         self.root.resizable(UIConfig.RESIZABLE, UIConfig.RESIZABLE)
 
-         # ICONS
+
+        # ICONS
         self.icons = {
-            "dashboard": ctk.CTkImage(Image.open("public/dashboard.png"), size=(20, 20)),
-            "stock": ctk.CTkImage(Image.open("public/in-stock.png"), size=(20, 20)),
-            "sending": ctk.CTkImage(Image.open("public/sending.png"), size=(20, 20)),
-            "plaza": ctk.CTkImage(Image.open("public/plaza.png"), size=(20, 20)),
-            "returns": ctk.CTkImage(Image.open("public/return-box.png"), size=(20, 20)),
-            "logs": ctk.CTkImage(Image.open("public/log-format.png"), size=(20, 20)),
-            "users": ctk.CTkImage(Image.open("public/users.png"), size=(20, 20)),
-            "products": ctk.CTkImage(Image.open("public/product-catalog.png"), size=(20, 20)),
-            "logout": ctk.CTkImage(Image.open("public/check-out.png"), size=(20, 20)),
-            "moon": ctk.CTkImage(Image.open("public/moon.png"), size=(20, 20)),
-            "light": ctk.CTkImage(Image.open("public/light.png"), size=(20, 20)),
+            "dashboard": ctk.CTkImage(Image.open(resource_path("public/dashboard.png")), size=(20, 20)),
+            "stock": ctk.CTkImage(Image.open(resource_path("public/in-stock.png")), size=(20, 20)),
+            "sending": ctk.CTkImage(Image.open(resource_path("public/sending.png")), size=(20, 20)),
+            "plaza": ctk.CTkImage(Image.open(resource_path("public/plaza.png")), size=(20, 20)),
+            "returns": ctk.CTkImage(Image.open(resource_path("public/return-box.png")), size=(20, 20)),
+            "logs": ctk.CTkImage(Image.open(resource_path("public/log-format.png")), size=(20, 20)),
+            "users": ctk.CTkImage(Image.open(resource_path("public/users.png")), size=(20, 20)),
+            "products": ctk.CTkImage(Image.open(resource_path("public/product-catalog.png")), size=(20, 20)),
+            "logout": ctk.CTkImage(Image.open(resource_path("public/check-out.png")), size=(20, 20)),
+            "moon": ctk.CTkImage(Image.open(resource_path("public/moon.png")), size=(20, 20)),
+            "light": ctk.CTkImage(Image.open(resource_path("public/light.png")), size=(20, 20)),
 
             # KPI ICONS
-            "total-stock": ctk.CTkImage(Image.open("public/total-stock.png"), size=(28, 28)),
-            "sales": ctk.CTkImage(Image.open("public/sales.png"), size=(28, 28)),
-            "dispatch": ctk.CTkImage(Image.open("public/dispatch.png"), size=(28, 28)),
-            "returns_kpi": ctk.CTkImage(Image.open("public/returns.png"), size=(28, 28)),
-            "products_kpi": ctk.CTkImage(Image.open("public/product.png"), size=(28, 28)),
+            "total-stock": ctk.CTkImage(Image.open(resource_path("public/total-stock.png")), size=(28, 28)),
+            "sales": ctk.CTkImage(Image.open(resource_path("public/sales.png")), size=(28, 28)),
+            "dispatch": ctk.CTkImage(Image.open(resource_path("public/dispatch.png")), size=(28, 28)),
+            "returns_kpi": ctk.CTkImage(Image.open(resource_path("public/returns.png")), size=(28, 28)),
+            "products_kpi": ctk.CTkImage(Image.open(resource_path("public/product.png")), size=(28, 28)),
         }
 
         self.build_layout()
@@ -369,6 +372,7 @@ class Dashboard:
 
     def toggle_theme(self):
         theme_manager.toggle_theme()
+        # ctk.set_appearance_mode("dark")
         ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
         self.refresh_sidebar()
 

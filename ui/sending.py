@@ -6,6 +6,7 @@ from services.product_service import ProductService
 from utils.validators import Validators
 import pandas as pd
 from PIL import Image
+from utils.resource_path import resource_path
 
 
 class SendingPage:
@@ -21,7 +22,7 @@ class SendingPage:
 
         # ✅ Load export icon
         self.export_icon = ctk.CTkImage(
-            Image.open("public/export-xlsx.png"),
+            Image.open(resource_path("public/export-xlsx.png")),
             size=(20, 20)
         )
 

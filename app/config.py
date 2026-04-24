@@ -106,7 +106,7 @@ class UIConfig:
     WINDOW_HEIGHT = 900
 
     # 🖥️ Window Behavior
-    FULLSCREEN = True          # true fullscreen (no title bar)
+    FULLSCREEN = False          # true fullscreen (no title bar)
     MAXIMIZED = True            # recommended
     RESIZABLE = True           # disable manual resizing
 

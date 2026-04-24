@@ -7,6 +7,8 @@ from services.plaza_services import PlazaService
 from services.product_service import ProductService
 from utils.validators import Validators
 from PIL import Image
+from utils.resource_path import resource_path
+
 
 class PlazaPage:
     def __init__(self, root, db, user):
@@ -24,7 +26,7 @@ class PlazaPage:
         self.product_cache = {}
 
         self.export_icon = ctk.CTkImage(
-            Image.open("public/export-xlsx.png"),
+            Image.open(resource_path("public/export-xlsx.png")),
             size=(18, 18)
         )
 

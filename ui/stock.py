@@ -6,6 +6,7 @@ from services.product_service import ProductService
 from utils.validators import Validators
 import pandas as pd
 from PIL import Image
+from utils.resource_path import resource_path
 
 
 class StockPage:
@@ -25,7 +26,7 @@ class StockPage:
         self.sort_reverse = False
 
         self.export_icon = ctk.CTkImage(
-            Image.open("public/export-xlsx.png"),
+            Image.open(resource_path("public/export-xlsx.png")),
             size=(20, 20)
         )
 
@@ -225,7 +226,10 @@ class StockPage:
     # LOAD TABLE
     # =========================
     def load_table(self):
-        self.all_stock = self.stock_service.get_all_stock()
+        data = self.stock_service.get_all_stock() or []
+
+        # ✅ Ensure list
+        self.all_stock = list(data)
         self.filtered_stock = self.all_stock.copy()
         self.display_table(self.filtered_stock)
 

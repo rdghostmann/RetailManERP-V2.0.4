@@ -1,3 +1,4 @@
+# services/plaza_services.py
 from services.log_service import LogService
 from utils.validators import Validators
 
@@ -17,15 +18,18 @@ class PlazaService:
         customer_name: str,
         customer_phone: str
     ):
-        
-        # ✅ Validation
+        # =========================
+        # ✅ VALIDATION
+        # =========================
         Validators.validate_required(product_id, "Product is required")
         Validators.validate_imei(imei)
         Validators.validate_quantity(quantity)
         Validators.validate_required(customer_name, "Customer name required")
         Validators.validate_phone(customer_phone)
 
-        # 🔎 Ensure IMEI exists in stock
+        # =========================
+        # 🔎 CHECK STOCK EXISTS
+        # =========================
         stock = self.db.fetch_one(
             "SELECT id FROM stock WHERE imei=%s",
             (imei,)
@@ -34,39 +38,67 @@ class PlazaService:
         if not stock:
             raise ValueError("IMEI not found in stock")
 
-        # ✅ Verify colour exists in stock for this IMEI
+        # =========================
+        # 🔎 GET SPECIFIC COLOUR STOCK
+        # =========================
         colour_stock = self.db.fetch_one(
-            "SELECT quantity FROM stock WHERE imei=%s AND colour=%s",
+            "SELECT id, quantity FROM stock WHERE imei=%s AND colour=%s",
             (imei, colour)
         )
 
         if not colour_stock:
-            raise ValueError(f"Colour '{colour}' not found in stock for this IMEI")
+            raise ValueError(f"Colour '{colour}' not found in stock")
 
         if colour_stock["quantity"] < quantity:
             raise ValueError(f"Insufficient stock for colour '{colour}'")
 
-        query = """
-        INSERT INTO plaza (customer_name, customer_phone, product_id, imei, colour, quantity, recorded_by)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-
         try:
-            self.db.execute(query, (
-                customer_name,
-                customer_phone,
-                product_id,
-                imei,
-                colour,
-                quantity,
-                user_id
-            ))
+            # =========================
+            # 🔥 1. INSERT SALE RECORD
+            # =========================
+            self.db.execute(
+                """
+                INSERT INTO plaza (customer_name, customer_phone, product_id, imei, colour, quantity, recorded_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    customer_name,
+                    customer_phone,
+                    product_id,
+                    imei,
+                    colour,
+                    quantity,
+                    user_id
+                )
+            )
 
+            # =========================
+            # 🔥 2. DEDUCT STOCK
+            # =========================
+            new_qty = colour_stock["quantity"] - quantity
+
+            if new_qty > 0:
+                self.db.execute(
+                    "UPDATE stock SET quantity=%s WHERE id=%s",
+                    (new_qty, colour_stock["id"])
+                )
+            else:
+                # remove row when zero
+                self.db.execute(
+                    "DELETE FROM stock WHERE id=%s",
+                    (colour_stock["id"],)
+                )
+
+            # =========================
+            # 🔥 3. FETCH LAST RECORD
+            # =========================
             record = self.db.fetch_one(
                 "SELECT id FROM plaza ORDER BY id DESC LIMIT 1"
             )
 
-            # 🔐 Log action
+            # =========================
+            # 🔐 LOG ACTION
+            # =========================
             self.logger.log(user_id, "CREATE", "plaza", record["id"])
 
             return record
@@ -74,9 +106,15 @@ class PlazaService:
         except Exception as e:
             raise e
 
+    # =========================
+    # 📊 FETCH ALL SALES
+    # =========================
     def get_all(self):
         return self.db.fetch_all("SELECT * FROM plaza")
 
+    # =========================
+    # 📊 SALES BY STAFF
+    # =========================
     def get_sales_by_staff(self):
         query = """
         SELECT recorded_by, COUNT(*) as total_sales

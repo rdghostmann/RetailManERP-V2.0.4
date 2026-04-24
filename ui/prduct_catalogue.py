@@ -111,7 +111,7 @@ class ProductCataloguePage:
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # 🔥 Fill form when selecting
+        # Fill form on select
         self.tree.bind("<<TreeviewSelect>>", self.on_select)
 
     # =========================
@@ -135,7 +135,6 @@ class ProductCataloguePage:
             )
 
             messagebox.showinfo("Success", "Product added")
-
             self.clear_form()
             self.load_products()
 
@@ -143,7 +142,7 @@ class ProductCataloguePage:
             messagebox.showerror("Error", str(e))
 
     # =========================
-    # UPDATE (ADMIN ONLY)
+    # UPDATE
     # =========================
     def update_product(self):
         if not self.is_admin:
@@ -166,17 +165,18 @@ class ProductCataloguePage:
                 SET name=%s, brand=%s, description=%s
                 WHERE id=%s
                 """,
-                (name, brand, desc, selected)
+                (name, brand, desc, int(selected))
             )
 
             messagebox.showinfo("Success", "Product updated")
+            self.clear_form()
             self.load_products()
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
     # =========================
-    # DELETE (ADMIN ONLY)
+    # DELETE
     # =========================
     def delete_product(self):
         if not self.is_admin:
@@ -195,17 +195,18 @@ class ProductCataloguePage:
         try:
             self.db.execute(
                 "DELETE FROM products WHERE id=%s",
-                (selected,)
+                (int(selected),)
             )
 
             messagebox.showinfo("Deleted", "Product removed")
+            self.clear_form()
             self.load_products()
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
     # =========================
-    # SELECT → FILL FORM
+    # SELECT
     # =========================
     def on_select(self, event):
         selected = self.tree.focus()
@@ -233,7 +234,8 @@ class ProductCataloguePage:
     def load_products(self):
         self.all_products = self.db.fetch_all(
             "SELECT id, name, brand, description FROM products ORDER BY name ASC"
-        )
+        ) or []   # ✅ FIX HERE
+
         self.filtered_products = self.all_products.copy()
         self.display_products(self.filtered_products)
 

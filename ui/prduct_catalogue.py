@@ -6,17 +6,15 @@ import pandas as pd
 
 class ProductCataloguePage:
     def __init__(self, root, db, current_user):
+        self.root = root
+        self.db = db
+        self.user = current_user
+        self.is_admin = self.user["role"] == "admin"
+
         self.all_products = []
         self.filtered_products = []
         self.sort_column = None
         self.sort_reverse = False
-
-        if current_user["role"] != "admin":
-            messagebox.showerror("Access Denied", "Admins only")
-            return
-
-        self.root = root
-        self.db = db
 
         self.frame = ctk.CTkFrame(root)
         self.frame.pack(fill="both", expand=True)
@@ -52,16 +50,31 @@ class ProductCataloguePage:
             command=self.create_product
         ).pack(side="left", padx=5)
 
-        # ===== EXPORT BUTTON =====
+        # ✅ Admin controls
+        if self.is_admin:
+            ctk.CTkButton(
+                form,
+                text="Update Selected",
+                fg_color="#2563EB",
+                command=self.update_product
+            ).pack(side="left", padx=5)
+
+            ctk.CTkButton(
+                form,
+                text="Delete Selected",
+                fg_color="#DC2626",
+                command=self.delete_product
+            ).pack(side="left", padx=5)
+
+        # ===== EXPORT =====
         ctk.CTkButton(
             self.frame,
             text="Export to Excel",
             command=self.export_to_excel,
-            fg_color="#15803D",
-            hover_color="#166534"
+            fg_color="#15803D"
         ).pack(pady=5)
 
-        # ===== SEARCH BAR =====
+        # ===== SEARCH =====
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
 
@@ -73,7 +86,6 @@ class ProductCataloguePage:
             placeholder_text="Search products..."
         )
         search_entry.pack(side="left", fill="x", expand=True, padx=5)
-
         search_entry.bind("<KeyRelease>", self.filter_products)
 
         # ===== TABLE =====
@@ -86,24 +98,24 @@ class ProductCataloguePage:
             show="headings"
         )
 
-        # Sortable headings
         for col in ("Name", "Brand", "Description"):
-            self.tree.heading(
-                col,
-                text=col,
-                command=lambda c=col: self.sort_by_column(c)
-            )
+            self.tree.heading(col, text=col,
+                              command=lambda c=col: self.sort_by_column(c))
             self.tree.column(col, anchor="w", width=200)
 
-        # Scrollbar
-        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        scrollbar = ttk.Scrollbar(
+            table_frame, orient="vertical", command=self.tree.yview
+        )
         self.tree.configure(yscrollcommand=scrollbar.set)
 
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        # 🔥 Fill form when selecting
+        self.tree.bind("<<TreeviewSelect>>", self.on_select)
+
     # =========================
-    # CREATE PRODUCT
+    # CREATE
     # =========================
     def create_product(self):
         try:
@@ -124,46 +136,99 @@ class ProductCataloguePage:
 
             messagebox.showinfo("Success", "Product added")
 
-            self.name.delete(0, "end")
-            self.brand.delete(0, "end")
-            self.desc.delete(0, "end")
-
+            self.clear_form()
             self.load_products()
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
     # =========================
-    # EXPORT TO EXCEL
+    # UPDATE (ADMIN ONLY)
     # =========================
-    def export_to_excel(self):
+    def update_product(self):
+        if not self.is_admin:
+            messagebox.showerror("Access Denied", "Admins only")
+            return
+
+        selected = self.tree.focus()
+        if not selected:
+            messagebox.showwarning("Select", "Select a product to update")
+            return
+
         try:
-            data = self.filtered_products or self.all_products
+            name = self.name.get().strip()
+            brand = self.brand.get().strip()
+            desc = self.desc.get().strip()
 
-            if not data:
-                messagebox.showwarning("No Data", "No products to export")
-                return
-
-            df = pd.DataFrame(data)
-
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                title="Save Products As"
+            self.db.execute(
+                """
+                UPDATE products
+                SET name=%s, brand=%s, description=%s
+                WHERE id=%s
+                """,
+                (name, brand, desc, selected)
             )
 
-            if not file_path:
-                return
-
-            df.to_excel(file_path, index=False)
-
-            messagebox.showinfo("Success", "Products exported successfully")
+            messagebox.showinfo("Success", "Product updated")
+            self.load_products()
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
     # =========================
-    # LOAD PRODUCTS
+    # DELETE (ADMIN ONLY)
+    # =========================
+    def delete_product(self):
+        if not self.is_admin:
+            messagebox.showerror("Access Denied", "Admins only")
+            return
+
+        selected = self.tree.focus()
+        if not selected:
+            messagebox.showwarning("Select", "Select a product to delete")
+            return
+
+        confirm = messagebox.askyesno("Confirm", "Delete this product?")
+        if not confirm:
+            return
+
+        try:
+            self.db.execute(
+                "DELETE FROM products WHERE id=%s",
+                (selected,)
+            )
+
+            messagebox.showinfo("Deleted", "Product removed")
+            self.load_products()
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # =========================
+    # SELECT → FILL FORM
+    # =========================
+    def on_select(self, event):
+        selected = self.tree.focus()
+        if not selected:
+            return
+
+        values = self.tree.item(selected, "values")
+
+        self.name.delete(0, "end")
+        self.brand.delete(0, "end")
+        self.desc.delete(0, "end")
+
+        self.name.insert(0, values[0])
+        self.brand.insert(0, values[1])
+        self.desc.insert(0, values[2])
+
+    def clear_form(self):
+        self.name.delete(0, "end")
+        self.brand.delete(0, "end")
+        self.desc.delete(0, "end")
+
+    # =========================
+    # LOAD
     # =========================
     def load_products(self):
         self.all_products = self.db.fetch_all(
@@ -172,9 +237,6 @@ class ProductCataloguePage:
         self.filtered_products = self.all_products.copy()
         self.display_products(self.filtered_products)
 
-    # =========================
-    # DISPLAY
-    # =========================
     def display_products(self, data):
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -214,7 +276,6 @@ class ProductCataloguePage:
 
         db_col = mapping[col]
 
-        # Toggle sorting
         if self.sort_column == db_col:
             self.sort_reverse = not self.sort_reverse
         else:
@@ -228,3 +289,31 @@ class ProductCataloguePage:
         )
 
         self.display_products(self.filtered_products)
+
+    # =========================
+    # EXPORT
+    # =========================
+    def export_to_excel(self):
+        try:
+            data = self.filtered_products or self.all_products
+
+            if not data:
+                messagebox.showwarning("No Data", "No products to export")
+                return
+
+            df = pd.DataFrame(data)
+
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")]
+            )
+
+            if not file_path:
+                return
+
+            df.to_excel(file_path, index=False)
+
+            messagebox.showinfo("Success", "Exported successfully")
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))

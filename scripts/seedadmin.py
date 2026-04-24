@@ -15,7 +15,7 @@ connection = pymysql.connect(
 # =========================
 # 🔐 HASH PASSWORD
 # =========================
-plain_password = "password@123"
+plain_password = "password123"
 hashed_password = bcrypt.hashpw(plain_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 try:
@@ -23,7 +23,7 @@ try:
         # Check if admin already exists
         cursor.execute(
             "SELECT id FROM users WHERE phone=%s",
-            ("08000000000000",)
+            ("09032374880",)
         )
         existing = cursor.fetchone()
 
@@ -37,7 +37,7 @@ try:
             """
             cursor.execute(sql, (
                 "admin",
-                "08000000000000",
+                "09032374880",
                 hashed_password,
                 "admin"
             ))

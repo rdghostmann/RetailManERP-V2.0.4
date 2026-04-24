@@ -374,6 +374,11 @@ class Dashboard:
 
     def logout(self):
         self.root.destroy()
+        
+        # 🔁 Return to Login UI
+        from ui.login import LoginWindow
+        login = LoginWindow(self.db)
+        login.run()
 
     def run(self):
         self.root.mainloop()

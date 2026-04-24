@@ -7,6 +7,7 @@ from utils.validators import Validators
 import pandas as pd
 from PIL import Image
 
+
 class StockPage:
 
     def __init__(self, root, db, user):
@@ -35,7 +36,7 @@ class StockPage:
         self.load_table()
 
     # =========================
-    # 🔐 IMEI INPUT VALIDATION
+    # 🔐 IMEI VALIDATION (INPUT LEVEL)
     # =========================
     def validate_imei_input(self, value):
         return (value.isdigit() and len(value) <= 15) or value == ""
@@ -66,6 +67,7 @@ class StockPage:
             background=[("selected", "#2563EB")]
         )
 
+        # Title
         ctk.CTkLabel(
             self.frame,
             text="Stock Management",
@@ -78,18 +80,25 @@ class StockPage:
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
+        # Products
         products = self.product_service.get_all()
         self.product_map = {p["name"]: p["id"] for p in products} if products else {}
 
         self.product_var = ctk.StringVar()
+        product_values = list(self.product_map.keys()) if self.product_map else []
+
         self.product_dropdown = ctk.CTkComboBox(
             form,
-            values=list(self.product_map.keys()) if self.product_map else ["No Products"],
+            values=product_values if product_values else ["No Products"],
             variable=self.product_var
         )
         self.product_dropdown.pack(side="left", padx=5)
 
-        # ✅ IMEI VALIDATION
+        # ✅ Auto-select first product
+        if product_values:
+            self.product_var.set(product_values[0])
+
+        # IMEI field with validation
         vcmd = (self.root.register(self.validate_imei_input), "%P")
 
         self.imei_entry = ctk.CTkEntry(
@@ -103,12 +112,14 @@ class StockPage:
         self.colour_entry = ctk.CTkEntry(form, placeholder_text="Colour")
         self.colour_entry.pack(side="left", padx=5)
 
+        # Add button
         ctk.CTkButton(
             form,
             text="Add Stock",
             command=self.add_stock
         ).pack(side="left", padx=5)
 
+        # Export button
         ctk.CTkButton(
             form,
             text=" Export Excel",
@@ -172,8 +183,11 @@ class StockPage:
             imei = self.imei_entry.get().strip()
             colour = self.colour_entry.get().strip()
 
-            if not product_name or product_name not in self.product_map:
-                raise ValueError("Please select a valid product")
+            if not self.product_map:
+                raise ValueError("No products available. Create product first.")
+
+            if product_name not in self.product_map:
+                raise ValueError("Invalid product selected")
 
             if not imei:
                 raise ValueError("IMEI is required")
@@ -189,13 +203,18 @@ class StockPage:
             product_id = self.product_map[product_name]
 
             self.stock_service.add_stock(
-                self.user["id"], product_id, imei, colour, 1
+                self.user["id"],
+                product_id,
+                imei,
+                colour,
+                1
             )
 
             messagebox.showinfo("Success", "Stock added successfully")
 
-            self.imei_entry.delete(0, 'end')
-            self.colour_entry.delete(0, 'end')
+            # Reset fields
+            self.imei_entry.delete(0, "end")
+            self.colour_entry.delete(0, "end")
 
             self.load_table()
 
@@ -214,8 +233,7 @@ class StockPage:
     # DISPLAY TABLE
     # =========================
     def display_table(self, data):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+        self.tree.delete(*self.tree.get_children())
 
         for row in data:
             self.tree.insert(
@@ -264,8 +282,7 @@ class StockPage:
             self.sort_column = db_col
             self.sort_reverse = False
 
-        self.filtered_stock = sorted(
-            self.filtered_stock,
+        self.filtered_stock.sort(
             key=lambda x: x[db_col] if db_col == "quantity" else str(x[db_col]).lower(),
             reverse=self.sort_reverse
         )
@@ -283,9 +300,7 @@ class StockPage:
                 messagebox.showwarning("No Data", "No stock data to export")
                 return
 
-            df = pd.DataFrame(data)
-
-            df = df.rename(columns={
+            df = pd.DataFrame(data).rename(columns={
                 "name": "Product",
                 "imei": "IMEI",
                 "colour": "Colour",

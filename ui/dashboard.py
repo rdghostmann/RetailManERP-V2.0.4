@@ -38,8 +38,27 @@ class Dashboard:
         ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
 
         self.root = ctk.CTk()
-        self.root.title("RetailMan ERP V.2.0.1")
-        self.root.geometry(f"{UIConfig.WINDOW_WIDTH}x{UIConfig.WINDOW_HEIGHT}")
+        self.root.title("RetailMan V2.0.1 Dashboard")
+        if UIConfig.MAXIMIZED:
+            # Windows
+            try:
+                self.root.state("zoomed")
+            except:
+                # fallback (Linux/Mac)
+                screen_w = self.root.winfo_screenwidth()
+                screen_h = self.root.winfo_screenheight()
+                self.root.geometry(f"{screen_w}x{screen_h}")
+
+        elif UIConfig.FULLSCREEN:
+            self.root.attributes("-fullscreen", True)
+
+        else:
+            self.root.geometry(f"{UIConfig.WINDOW_WIDTH}x{UIConfig.WINDOW_HEIGHT}")
+
+        # Disable resize if configured
+        self.root.resizable(UIConfig.RESIZABLE, UIConfig.RESIZABLE)
+        # self.root.geometry(f"{UIConfig.WINDOW_WIDTH}x{UIConfig.WINDOW_HEIGHT}")
+        # self.root.resizable(False, False)
 
          # ICONS
         self.icons = {

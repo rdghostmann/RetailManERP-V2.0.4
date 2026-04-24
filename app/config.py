@@ -102,8 +102,18 @@ ExportConfig.ensure_export_dir()
 # ==============================
 
 class UIConfig:
-    WINDOW_WIDTH = 1200
-    WINDOW_HEIGHT = 800
+    WINDOW_WIDTH = 1500
+    WINDOW_HEIGHT = 900
+
+    # 🖥️ Window Behavior
+    FULLSCREEN = False          # true fullscreen (no title bar)
+    MAXIMIZED = True            # recommended
+    RESIZABLE = False           # disable manual resizing
+
+    FONT = {
+        "family": "JetBrains Mono",
+        "size": 12
+    }
 
     # Dark Theme
     DARK_COLORS = {
@@ -133,11 +143,6 @@ class UIConfig:
         "success": "#28A745",
         "danger": "#FF6B6B",
         "warning": "#FFC107"
-    }
-
-    FONT = {
-        "family": "JetBrains Mono",
-        "size": 12
     }
 
 

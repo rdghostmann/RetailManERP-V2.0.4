@@ -21,7 +21,19 @@ class LoginWindow:
         self.name_entry = ctk.CTkEntry(self.root, placeholder_text="Name")
         self.name_entry.pack(pady=10)
 
-        self.phone_entry = ctk.CTkEntry(self.root, placeholder_text="Phone")
+        # Phone validation function
+        def validate_phone_input(self, value):
+            return value.isdigit() and len(value) <= 11 or value == ""
+
+        # Register validation
+        vcmd = (self.root.register(self.validate_phone_input), "%P")
+
+        self.phone_entry = ctk.CTkEntry(
+            self.root,
+            placeholder_text="Phone (11 digits)",
+            validate="key",
+            validatecommand=vcmd
+        )
         self.phone_entry.pack(pady=10)
 
         self.password_entry = ctk.CTkEntry(self.root, placeholder_text="Password", show="*")

@@ -1,3 +1,4 @@
+# services/stock_service.py
 import random
 from services.log_service import LogService
 from app.config import InventoryConfig

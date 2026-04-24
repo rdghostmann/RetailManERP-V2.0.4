@@ -160,21 +160,4 @@ CREATE TABLE IF NOT EXISTS logs (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- ========================================
--- SEED ADMIN USER (SAFE INSERT)
--- ========================================
-INSERT INTO users (name, phone, password, role)
-SELECT * FROM (
-    SELECT 'admin', '08000000000000',
-    '$2b$12$4s/OchAYA.KM3fNRp/mZ.uZkkYf.Ax4J0LMwqFqUmfCv4tpvRcHAe',
-    'admin'
-) AS tmp
-WHERE NOT EXISTS (
-    SELECT phone FROM users WHERE phone = '08000000000000'
-) LIMIT 1;
 
--- ========================================
--- VERIFY
--- ========================================
--- SHOW TABLES;
--- SELECT * FROM users;

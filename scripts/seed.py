@@ -6,7 +6,7 @@ def seed_products():
         host="localhost",
         user="root",
         password="Password@123",
-        database="retailman",
+        database="retail_man_db",
         cursorclass=pymysql.cursors.DictCursor
     )
 

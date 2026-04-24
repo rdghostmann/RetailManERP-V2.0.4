@@ -60,6 +60,7 @@ class Dashboard:
             "sales": ctk.CTkImage(Image.open("public/sales.png"), size=(28, 28)),
             "dispatch": ctk.CTkImage(Image.open("public/dispatch.png"), size=(28, 28)),
             "returns_kpi": ctk.CTkImage(Image.open("public/returns.png"), size=(28, 28)),
+            "products_kpi": ctk.CTkImage(Image.open("public/product.png"), size=(28, 28)),
         }
 
         self.build_layout()
@@ -124,10 +125,10 @@ class Dashboard:
 
         self.create_sidebar_button("Dashboard", self.icons["dashboard"], self.show_dashboard, "dashboard").pack(fill="x", padx=10, pady=5)
        
-        if self.user["role"] == "admin" or self.user["role"] == "staff":
+        if self.user["role"] == "admin":
             self.create_sidebar_button("Users", self.icons["users"], self.open_users, "users").pack(fill="x", padx=10, pady=5)
-            self.create_sidebar_button("Products", self.icons["products"], self.product_catalogue, "products").pack(fill="x", padx=10, pady=5)
-
+        
+        self.create_sidebar_button("Products", self.icons["products"], self.product_catalogue, "products").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("Stock", self.icons["stock"], self.open_stock, "stock").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("Plaza", self.icons["plaza"], self.open_plaza, "plaza").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("Returns", self.icons["returns"], self.open_returns, "returns").pack(fill="x", padx=10, pady=5)
@@ -139,7 +140,7 @@ class Dashboard:
         current_theme_is_dark = theme_manager.is_dark()
 
         theme_icon = self.icons["light"] if current_theme_is_dark else self.icons["moon"]
-        theme_text = "" if current_theme_is_dark else ""
+        theme_text = "Light Theme" if current_theme_is_dark else "Dark Theme"
 
         ctk.CTkButton(
             self.sidebar,
@@ -177,6 +178,7 @@ class Dashboard:
         self.kpi_frame = ctk.CTkFrame(self.content)
         self.kpi_frame.pack(fill="x", padx=10, pady=10)
 
+        self.product_card = self.create_card( self.kpi_frame, "Products", "0", self.icons["products_kpi"])
         self.stock_card = self.create_card(self.kpi_frame, "Total Stock", "0", self.icons["total-stock"])
         self.sales_card = self.create_card(self.kpi_frame, "Sales", "0", self.icons["sales"])
         self.sending_card = self.create_card(self.kpi_frame, "Dispatch", "0", self.icons["dispatch"])
@@ -248,6 +250,8 @@ class Dashboard:
 
     def load_dashboard_data(self):
         try:
+            products = self.db.fetch_all("SELECT id FROM products")
+            total_products = len(products)  
             stock_data = self.stock_service.get_all_stock()
             total_stock = sum(row["quantity"] for row in stock_data)
 
@@ -256,6 +260,7 @@ class Dashboard:
             returns_data = self.returns_service.get_all()
 
             # KPI
+            self.product_card.configure(text=str(total_products))
             self.stock_card.configure(text=str(total_stock))
             self.sales_card.configure(text=str(len(sales_data)))
             self.sending_card.configure(text=str(len(sending_data)))
@@ -265,7 +270,6 @@ class Dashboard:
             for item in self.inventory_table.get_children():
                 self.inventory_table.delete(item)
 
-            # ✅ AGGREGATE UNIQUE PRODUCTS
             # ✅ AGGREGATE UNIQUE PRODUCTS (FIXED)
             aggregated = {}
 
@@ -281,28 +285,7 @@ class Dashboard:
                     }
 
                 aggregated[key]["quantity"] += row["quantity"]
-            # aggregated = {}
-            # for row in stock_data:
-            #     product_id = row.get("product_id")  # safer access
-
-            #     if not product_id:
-            #         continue  # skip bad records instead of crashing
-
-            #     if product_id not in aggregated:
-            #         product = self.db.fetch_one(
-            #             "SELECT name, brand, description FROM products WHERE id=%s",
-            #             (product_id,)
-            #         )
-
-            #         aggregated[product_id] = {
-            #             "name": product["name"] if product else "Unknown",
-            #             "brand": product["brand"] if product else "-",
-            #             "description": product["description"] if product else "-",
-            #             "quantity": 0
-            #         }
-
-            #     aggregated[product_id]["quantity"] += row.get("quantity", 0)
-                
+                 
             # ✅ INSERT INTO TABLE
             for item in aggregated.values():
                 self.inventory_table.insert(

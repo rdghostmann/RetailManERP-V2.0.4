@@ -9,7 +9,7 @@ from PIL import Image
 
 
 class StockPage:
-    
+
     def __init__(self, root, db, user):
         self.root = root
         self.db = db
@@ -18,7 +18,12 @@ class StockPage:
         self.stock_service = StockService(db)
         self.product_service = ProductService(db)
 
-        # ✅ Load icon
+        # State
+        self.all_stock = []
+        self.filtered_stock = []
+        self.sort_column = None
+        self.sort_reverse = False
+
         self.export_icon = ctk.CTkImage(
             Image.open("public/export-xlsx.png"),
             size=(20, 20)
@@ -30,24 +35,57 @@ class StockPage:
         self.build_ui()
         self.load_table()
 
+    # =========================
+    # UI
+    # =========================
     def build_ui(self):
+        # =========================
+        # 🎨 TABLE STYLE
+        # =========================
+        style = ttk.Style()
+
+        # Use default theme that supports styling
+        style.theme_use("default")
+
+        # Header style
+        style.configure(
+            "Treeview.Heading",
+            font=("Arial", 11, "bold"),
+            borderwidth=1,
+            relief="solid"
+        )
+
+        # Table cells
+        style.configure(
+            "Treeview",
+            rowheight=28,
+            borderwidth=1,
+            relief="solid"
+        )
+
+        # Optional: grid-like borders
+        style.map(
+            "Treeview",
+            background=[("selected", "#2563EB")]
+        ) 
+
         ctk.CTkLabel(
             self.frame,
             text="Stock Management",
             font=("Arial", 18)
         ).pack(pady=10)
-         
+
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
-        # Products
+        # Products dropdown
         products = self.product_service.get_all()
-        product_names = [p["name"] for p in products] if products else ["No Products"]
+        self.product_map = {p["name"]: p["id"] for p in products} if products else {}
 
         self.product_var = ctk.StringVar()
         self.product_dropdown = ctk.CTkComboBox(
             form,
-            values=product_names,
+            values=list(self.product_map.keys()) if self.product_map else ["No Products"],
             variable=self.product_var
         )
         self.product_dropdown.pack(side="left", padx=5)
@@ -64,7 +102,7 @@ class StockPage:
             command=self.add_stock
         ).pack(side="left", padx=5)
 
-        # ✅ Export button with icon
+        # Export button
         ctk.CTkButton(
             form,
             text="  Export Excel",
@@ -75,49 +113,77 @@ class StockPage:
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
-        # Table
+        # =========================
+        # 🔍 SEARCH BAR
+        # =========================
+        search_frame = ctk.CTkFrame(self.frame)
+        search_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        self.search_var = ctk.StringVar()
+
+        search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="Search stock..."
+        )
+        search_entry.pack(fill="x", expand=True, padx=5)
+
+        search_entry.bind("<KeyRelease>", self.filter_table)
+
+        # =========================
+        # TABLE
+        # =========================
         tree_frame = ctk.CTkFrame(self.frame)
         tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         self.tree = ttk.Treeview(
             tree_frame,
             columns=("Product", "IMEI", "Colour", "Qty"),
-            show="headings"
+            show="headings",
+            style="Treeview"
         )
+
+        style.theme_use("default")
+
+        # Sortable headers
+        for col in ("Product", "IMEI", "Colour", "Qty"):
+            self.tree.heading(
+                col,
+                text=col,
+                command=lambda c=col: self.sort_by_column(c)
+            )
+            self.tree.column(col, width=150, anchor="center")
 
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
 
-        for col in ("Product", "IMEI", "Colour", "Qty"):
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=120)
-
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+    # =========================
+    # ADD STOCK
+    # =========================
     def add_stock(self):
         try:
             product_name = self.product_var.get()
             imei = self.imei_entry.get().strip()
             colour = self.colour_entry.get().strip()
 
-            if not product_name:
-                raise ValueError("Please select a product")
+            if not product_name or product_name not in self.product_map:
+                raise ValueError("Please select a valid product")
+
             if not imei:
                 raise ValueError("IMEI is required")
+
             if not colour:
                 raise ValueError("Colour is required")
 
             Validators.validate_imei(imei)
 
-            product_list = self.product_service.get_all()
-            product = next((p for p in product_list if p["name"] == product_name), None)
-
-            if not product:
-                raise ValueError("Product not found")
+            product_id = self.product_map[product_name]
 
             self.stock_service.add_stock(
-                self.user["id"], product["id"], imei, colour, 1
+                self.user["id"], product_id, imei, colour, 1
             )
 
             messagebox.showinfo("Success", "Stock added successfully")
@@ -130,30 +196,82 @@ class StockPage:
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
+    # =========================
+    # LOAD TABLE
+    # =========================
     def load_table(self):
+        self.all_stock = self.stock_service.get_all_stock()
+        self.filtered_stock = self.all_stock.copy()
+        self.display_table(self.filtered_stock)
+
+    # =========================
+    # DISPLAY TABLE
+    # =========================
+    def display_table(self, data):
         for row in self.tree.get_children():
             self.tree.delete(row)
-
-        data = self.stock_service.get_all_stock()
 
         for row in data:
             self.tree.insert(
                 "",
                 "end",
+                iid=row["id"],
                 values=(
-                    row["product_name"],
+                    row["name"],
                     row["imei"],
                     row["colour"],
                     row["quantity"]
                 )
             )
 
-    # ==============================
-    # 📤 EXPORT TO EXCEL
-    # ==============================
+    # =========================
+    # 🔍 FILTER
+    # =========================
+    def filter_table(self, event=None):
+        keyword = self.search_var.get().lower()
+
+        self.filtered_stock = [
+            row for row in self.all_stock
+            if keyword in str(row["name"]).lower()
+            or keyword in str(row["imei"]).lower()
+            or keyword in str(row["colour"]).lower()
+        ]
+
+        self.display_table(self.filtered_stock)
+
+    # =========================
+    # ↕️ SORT
+    # =========================
+    def sort_by_column(self, col):
+        mapping = {
+            "Product": "name",
+            "IMEI": "imei",
+            "Colour": "colour",
+            "Qty": "quantity"
+        }
+
+        db_col = mapping[col]
+
+        if self.sort_column == db_col:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_column = db_col
+            self.sort_reverse = False
+
+        self.filtered_stock = sorted(
+            self.filtered_stock,
+            key=lambda x: x[db_col] if db_col == "quantity" else str(x[db_col]).lower(),
+            reverse=self.sort_reverse
+        )
+
+        self.display_table(self.filtered_stock)
+
+    # =========================
+    # EXPORT TO EXCEL
+    # =========================
     def export_to_excel(self):
         try:
-            data = self.stock_service.get_all_stock()
+            data = self.filtered_stock or self.all_stock
 
             if not data:
                 messagebox.showwarning("No Data", "No stock data to export")
@@ -162,7 +280,7 @@ class StockPage:
             df = pd.DataFrame(data)
 
             df = df.rename(columns={
-                "product_name": "Product",
+                "name": "Product",
                 "imei": "IMEI",
                 "colour": "Colour",
                 "quantity": "Quantity"

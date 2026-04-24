@@ -1,10 +1,16 @@
-#ui/product_catalogue.py
+# ui/product_catalogue.py
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import pandas as pd
 
+
 class ProductCataloguePage:
     def __init__(self, root, db, current_user):
+        self.all_products = []
+        self.filtered_products = []
+        self.sort_column = None
+        self.sort_reverse = False
+
         if current_user["role"] != "admin":
             messagebox.showerror("Access Denied", "Admins only")
             return
@@ -55,6 +61,21 @@ class ProductCataloguePage:
             hover_color="#166534"
         ).pack(pady=5)
 
+        # ===== SEARCH BAR =====
+        search_frame = ctk.CTkFrame(self.frame)
+        search_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        self.search_var = ctk.StringVar()
+
+        search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="Search products..."
+        )
+        search_entry.pack(side="left", fill="x", expand=True, padx=5)
+
+        search_entry.bind("<KeyRelease>", self.filter_products)
+
         # ===== TABLE =====
         table_frame = ctk.CTkFrame(self.frame)
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -65,14 +86,14 @@ class ProductCataloguePage:
             show="headings"
         )
 
-        # Columns
-        self.tree.heading("Name", text="Product Name")
-        self.tree.heading("Brand", text="Brand")
-        self.tree.heading("Description", text="Description")
-
-        self.tree.column("Name", anchor="w", width=200)
-        self.tree.column("Brand", anchor="w", width=150)
-        self.tree.column("Description", anchor="w", width=300)
+        # Sortable headings
+        for col in ("Name", "Brand", "Description"):
+            self.tree.heading(
+                col,
+                text=col,
+                command=lambda c=col: self.sort_by_column(c)
+            )
+            self.tree.column(col, anchor="w", width=200)
 
         # Scrollbar
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
@@ -117,9 +138,7 @@ class ProductCataloguePage:
     # =========================
     def export_to_excel(self):
         try:
-            data = self.db.fetch_all(
-                "SELECT name, brand, description FROM products ORDER BY name ASC"
-            )
+            data = self.filtered_products or self.all_products
 
             if not data:
                 messagebox.showwarning("No Data", "No products to export")
@@ -147,21 +166,65 @@ class ProductCataloguePage:
     # LOAD PRODUCTS
     # =========================
     def load_products(self):
+        self.all_products = self.db.fetch_all(
+            "SELECT id, name, brand, description FROM products ORDER BY name ASC"
+        )
+        self.filtered_products = self.all_products.copy()
+        self.display_products(self.filtered_products)
+
+    # =========================
+    # DISPLAY
+    # =========================
+    def display_products(self, data):
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        products = self.db.fetch_all(
-            "SELECT id, name, brand, description FROM products ORDER BY name ASC"
-        )
-
-        for p in products:
+        for p in data:
             self.tree.insert(
                 "",
                 "end",
                 iid=p["id"],
-                values=(
-                    p["name"],
-                    p["brand"],
-                    p["description"]
-                )
+                values=(p["name"], p["brand"], p["description"])
             )
+
+    # =========================
+    # FILTER
+    # =========================
+    def filter_products(self, event=None):
+        keyword = self.search_var.get().lower()
+
+        self.filtered_products = [
+            p for p in self.all_products
+            if keyword in p["name"].lower()
+            or keyword in p["brand"].lower()
+            or keyword in (p["description"] or "").lower()
+        ]
+
+        self.display_products(self.filtered_products)
+
+    # =========================
+    # SORT
+    # =========================
+    def sort_by_column(self, col):
+        mapping = {
+            "Name": "name",
+            "Brand": "brand",
+            "Description": "description"
+        }
+
+        db_col = mapping[col]
+
+        # Toggle sorting
+        if self.sort_column == db_col:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_reverse = False
+            self.sort_column = db_col
+
+        self.filtered_products = sorted(
+            self.filtered_products,
+            key=lambda x: (x[db_col] or "").lower(),
+            reverse=self.sort_reverse
+        )
+
+        self.display_products(self.filtered_products)

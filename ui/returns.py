@@ -33,20 +33,7 @@ class ReturnsPage:
         self.load_table()
 
     def build_ui(self):
-        # ===== SEARCH BAR =====
-        search_frame = ctk.CTkFrame(self.frame)
-        search_frame.pack(fill="x", padx=10, pady=(0, 5))
-
-        self.search_var = ctk.StringVar()
-
-        search_entry = ctk.CTkEntry(
-            search_frame,
-            textvariable=self.search_var,
-            placeholder_text="🔍 Search returns (product, IMEI, customer...)"
-        )
-        search_entry.pack(fill="x", padx=5)
-
-        search_entry.bind("<KeyRelease>", self.filter_table)
+  
 
         ctk.CTkLabel(
             self.frame,
@@ -94,6 +81,21 @@ class ReturnsPage:
             hover_color="#15803D",
             command=self.export_to_excel
         ).pack(side="left", padx=5)
+
+        # ===== SEARCH BAR =====
+        search_frame = ctk.CTkFrame(self.frame)
+        search_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        self.search_var = ctk.StringVar()
+
+        search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="🔍 Search returns (product, IMEI, customer...)"
+        )
+        search_entry.pack(fill="x", padx=5)
+
+        search_entry.bind("<KeyRelease>", self.filter_table)
 
         # Table
         self.tree = ttk.Treeview(

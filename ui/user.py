@@ -18,6 +18,25 @@ class UserPage:
         self.build_ui()
         self.load_users()
 
+
+        # =========================
+        # INPUT VALIDATION
+        # =========================
+    def validate_phone_input(self, value):
+        """
+        Allow only digits and max length 11
+        """
+        if value == "":
+            return True
+
+        if not value.isdigit():
+            return False
+
+        if len(value) > 11:
+            return False
+
+        return True
+
     # =========================
     # UI
     # =========================
@@ -33,7 +52,16 @@ class UserPage:
         form.pack(pady=10, padx=10, fill="x")
 
         self.name = ctk.CTkEntry(form, placeholder_text="Name")
-        self.phone = ctk.CTkEntry(form, placeholder_text="Phone")
+        
+        # Register validation
+        vcmd = (self.frame.register(self.validate_phone_input), "%P")
+
+        self.phone = ctk.CTkEntry(
+            form,
+            placeholder_text="Phone",
+            validate="key",
+            validatecommand=vcmd
+        )
 
         self.role = ctk.CTkComboBox(form, values=["admin", "staff"])
         self.role.set("staff")
@@ -91,9 +119,24 @@ class UserPage:
             phone = self.phone.get().strip()
             role = self.role.get()
 
-            if not name or not phone:
-                raise ValueError("Name and Phone are required")
+            # =========================
+            # VALIDATION
+            # =========================
+            if not name:
+                raise ValueError("Name is required")
 
+            if not phone:
+                raise ValueError("Phone is required")
+
+            if not phone.isdigit():
+                raise ValueError("Phone must contain only numbers")
+
+            if len(phone) != 11:
+                raise ValueError("Phone must be exactly 11 digits")
+
+            # =========================
+            # INSERT
+            # =========================
             self.db.execute(
                 """
                 INSERT INTO users (name, phone, role)
@@ -104,9 +147,13 @@ class UserPage:
 
             messagebox.showinfo("Success", "User created")
 
+            # Reset form
             self.name.delete(0, "end")
             self.phone.delete(0, "end")
             self.role.set("staff")
+
+            # UX: focus back
+            self.name.focus()
 
             self.load_users()
 

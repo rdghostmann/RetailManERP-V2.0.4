@@ -90,7 +90,19 @@ class StockPage:
         )
         self.product_dropdown.pack(side="left", padx=5)
 
-        self.imei_entry = ctk.CTkEntry(form, placeholder_text="IMEI")
+        # IMEI validation function
+        def validate_imei_input(self, value):
+            return value.isdigit() and len(value) <= 15 or value == ""
+
+        # Register validation
+        vcmd = (self.root.register(self.validate_imei_input), "%P")
+
+        self.imei_entry = ctk.CTkEntry(
+            form,
+            placeholder_text="IMEI (15 digits)",
+            validate="key",
+            validatecommand=vcmd
+        )
         self.imei_entry.pack(side="left", padx=5)
 
         self.colour_entry = ctk.CTkEntry(form, placeholder_text="Colour")

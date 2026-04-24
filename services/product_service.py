@@ -1,3 +1,4 @@
+# services/product_service.py
 from services.log_service import LogService
 
 

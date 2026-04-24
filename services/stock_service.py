@@ -35,19 +35,18 @@ class StockService:
     # =========================
     def add_stock(self, user_id, product_id, imei, colour, quantity=1):
         try:
-            # Validate IMEI
             self.validate_imei(imei)
 
-            # Enforce quantity rule (business constraint)
             if quantity != 1:
                 raise ValueError("Quantity must be 1 per IMEI")
 
             query = """
-                INSERT INTO stock 
+                INSERT INTO stock
                 (product_id, imei, colour, quantity, added_by)
                 VALUES (%s, %s, %s, %s, %s)
             """
 
+            # ✅ Just execute (no return_last_id)
             self.db.execute(query, (
                 product_id,
                 imei,
@@ -56,20 +55,18 @@ class StockService:
                 user_id
             ))
 
-            # Get inserted ID (preferred)
-            record_id = self.db.last_insert_id()
+            # ✅ Fetch inserted record
+            record = self.db.fetch_one(
+                "SELECT id FROM stock WHERE imei=%s",
+                (imei,)
+            )
 
-            if not record_id:
-                # fallback (safe guard)
-                record = self.db.fetch_one(
-                    "SELECT id FROM stock WHERE imei=%s",
-                    (imei,)
-                )
-                if not record:
-                    raise ValueError("Failed to retrieve inserted stock record")
-                record_id = record["id"]
+            if not record:
+                raise ValueError("Failed to retrieve inserted stock record")
 
-            # Compliance log
+            record_id = record["id"]
+
+            # ✅ Log action
             self.logger.log(user_id, "CREATE", "stock", record_id)
 
             return {

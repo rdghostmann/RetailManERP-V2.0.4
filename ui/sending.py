@@ -32,20 +32,7 @@ class SendingPage:
         self.load_table()
 
     def build_ui(self):
-        # ===== SEARCH BAR =====
-        search_frame = ctk.CTkFrame(self.frame)
-        search_frame.pack(fill="x", padx=10, pady=(0, 5))
-
-        self.search_var = ctk.StringVar()
-
-        search_entry = ctk.CTkEntry(
-            search_frame,
-            textvariable=self.search_var,
-            placeholder_text="🔍 Search dispatch (product, customer...)"
-        )
-        search_entry.pack(fill="x", padx=5)
-
-        search_entry.bind("<KeyRelease>", self.filter_table)
+       
 
         ctk.CTkLabel(
             self.frame,
@@ -104,6 +91,21 @@ class SendingPage:
             self.tree.column(col, width=150)
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+         # ===== SEARCH BAR =====
+        search_frame = ctk.CTkFrame(self.frame)
+        search_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        self.search_var = ctk.StringVar()
+
+        search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="🔍 Search dispatch (product, customer...)"
+        )
+        search_entry.pack(fill="x", padx=5)
+
+        search_entry.bind("<KeyRelease>", self.filter_table)
 
     def dispatch(self):
         try:

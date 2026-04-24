@@ -124,7 +124,7 @@ class StockPage:
         search_entry = ctk.CTkEntry(
             search_frame,
             textvariable=self.search_var,
-            placeholder_text="Search stock..."
+            placeholder_text="Search by Product, IMEI, or Colour..."
         )
         search_entry.pack(fill="x", expand=True, padx=5)
 

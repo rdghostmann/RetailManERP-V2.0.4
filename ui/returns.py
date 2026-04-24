@@ -33,6 +33,21 @@ class ReturnsPage:
         self.load_table()
 
     def build_ui(self):
+        # ===== SEARCH BAR =====
+        search_frame = ctk.CTkFrame(self.frame)
+        search_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        self.search_var = ctk.StringVar()
+
+        search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="🔍 Search returns (product, IMEI, customer...)"
+        )
+        search_entry.pack(fill="x", padx=5)
+
+        search_entry.bind("<KeyRelease>", self.filter_table)
+
         ctk.CTkLabel(
             self.frame,
             text="Plaza Returns Management",
@@ -146,6 +161,9 @@ class ReturnsPage:
             messagebox.showerror("Error", str(e))
 
     def load_table(self):
+        self.all_data = self.returns_service.get_all()
+        self.display_table(self.all_data)
+
         for row in self.tree.get_children():
             self.tree.delete(row)
 
@@ -160,6 +178,34 @@ class ReturnsPage:
                 row["quantity"],
                 row["reason"]
             ))
+
+    def display_table(self, data):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        for row in data:
+            self.tree.insert("", "end", values=(
+                row["product_name"],
+                row["imei"],
+                row["colour"],
+                row["customer_name"],
+                row["quantity"],
+                row["reason"]
+            ))
+
+
+    def filter_table(self, event=None):
+        keyword = self.search_var.get().lower()
+
+        filtered = [
+            row for row in self.all_data
+            if keyword in row["product_name"].lower()
+            or keyword in row["imei"].lower()
+            or keyword in row["customer_name"].lower()
+            or keyword in (row["reason"] or "").lower()
+        ]
+
+        self.display_table(filtered)
 
     # ==============================
     # 📤 EXPORT TO EXCEL

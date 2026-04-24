@@ -35,6 +35,20 @@ class PlazaPage:
         self.load_table()
 
     def build_ui(self):
+        # ===== SEARCH BAR =====
+        search_frame = ctk.CTkFrame(self.frame)
+        search_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+        self.search_var = ctk.StringVar()
+
+        search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="🔍 Search sales (product, IMEI, customer...)"
+        )
+        search_entry.pack(fill="x", padx=5)
+
+        search_entry.bind("<KeyRelease>", self.filter_table)
         ctk.CTkLabel(
             self.frame,
             text="Plaza - Record Sales",
@@ -155,6 +169,9 @@ class PlazaPage:
             messagebox.showerror("Error", str(e))
 
     def load_table(self):
+        self.all_data = self.plaza_service.get_all()
+        self.display_table(self.all_data)
+
         for row in self.tree.get_children():
             self.tree.delete(row)
 
@@ -175,7 +192,47 @@ class PlazaPage:
                 row["customer_name"],
                 row["customer_phone"]
             ))
+def display_table(self, data):
+    for row in self.tree.get_children():
+        self.tree.delete(row)
 
+    for row in data:
+        product = self.db.fetch_one(
+            "SELECT name FROM products WHERE id=%s",
+            (row["product_id"],)
+        )
+        product_name = product["name"] if product else "Unknown"
+
+        self.tree.insert("", "end", values=(
+            product_name,
+            row["imei"],
+            row["colour"],
+            row["quantity"],
+            row["customer_name"],
+            row["customer_phone"]
+        ))
+
+
+    def filter_table(self, event=None):
+        keyword = self.search_var.get().lower()
+
+        filtered = []
+        for row in self.all_data:
+            product = self.db.fetch_one(
+                "SELECT name FROM products WHERE id=%s",
+                (row["product_id"],)
+            )
+            name = product["name"] if product else ""
+
+            if (
+                keyword in name.lower()
+                or keyword in row["imei"].lower()
+                or keyword in row["customer_name"].lower()
+                or keyword in row["customer_phone"].lower()
+            ):
+                filtered.append(row)
+
+        self.display_table(filtered)
     # ==============================
     # 📤 EXPORT TO EXCEL
     # ==============================

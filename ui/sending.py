@@ -63,10 +63,18 @@ class SendingPage:
         self.desc_entry.pack(side="left", padx=5)
 
         # Dispatch Button
+        # ctk.CTkButton(
+        #     form,
+        #     text="Dispatch",
+        #     command=self.dispatch
+        # ).pack(side="left", padx=5)
+
         ctk.CTkButton(
             form,
-            text="Dispatch",
-            command=self.dispatch
+            text="Mark as Collected",
+            fg_color="#F59E0B",
+            hover_color="#D97706",
+            command=self.open_collect_dialog
         ).pack(side="left", padx=5)
 
         # ✅ Export Button with icon
@@ -80,6 +88,55 @@ class SendingPage:
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
+    def open_collect_dialog(self):
+        selected = self.tree.selection()
+
+        if not selected:
+            messagebox.showwarning("Select", "Select a record first")
+            return
+
+        item = self.tree.item(selected[0])
+        values = item["values"]
+
+        self.selected_index = selected[0]
+        self.selected_data = self.all_data[self.tree.index(selected[0])]
+
+        dialog = ctk.CTkToplevel(self.frame)
+        dialog.title("Mark as Collected")
+        dialog.geometry("350x250")
+
+        ctk.CTkLabel(dialog, text="Collector Name").pack(pady=5)
+        name_entry = ctk.CTkEntry(dialog)
+        name_entry.pack(pady=5)
+
+        ctk.CTkLabel(dialog, text="Collector Phone").pack(pady=5)
+        phone_entry = ctk.CTkEntry(dialog)
+        phone_entry.pack(pady=5)
+
+        def save():
+            try:
+                name = name_entry.get().strip()
+                phone = phone_entry.get().strip()
+
+                if not messagebox.askyesno("Confirm", "Mark as collected?"):
+                    return
+
+                self.sending_service.mark_as_collected(
+                    self.user["id"],
+                    self.selected_data["id"],
+                    name,
+                    phone
+                )
+
+                messagebox.showinfo("Success", "Marked as collected")
+
+                dialog.destroy()
+                self.load_table()
+
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+        ctk.CTkButton(dialog, text="Save", command=save).pack(pady=15)
         # Table
         self.tree = ttk.Treeview(
             self.frame,
@@ -93,7 +150,7 @@ class SendingPage:
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-         # ===== SEARCH BAR =====
+        # ===== SEARCH BAR =====
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
 

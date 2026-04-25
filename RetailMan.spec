@@ -5,7 +5,7 @@ a = Analysis(
     ['app\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[('public', 'public'), ('.env', '.')],
+    datas=[('public', 'public')],
     hiddenimports=['pandas', 'PIL', 'customtkinter'],
     hookspath=[],
     hooksconfig={},

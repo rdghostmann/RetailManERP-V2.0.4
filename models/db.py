@@ -1,10 +1,7 @@
-
-# db.py
 import pymysql
 from pymysql.connections import Connection
 from typing import Any, Dict, List, Optional
 from env_loader import Env
-from app.config import DB_CONFIG
 
 
 class Database:
@@ -13,7 +10,6 @@ class Database:
     """
 
     def __init__(self):
-        self.config = DB_CONFIG.get_connection_dict()
         self.connection: Optional[Connection] = None
 
     # ==============================
@@ -25,8 +21,17 @@ class Database:
             return self.connection
 
         try:
-            self.connection = pymysql.connect(**self.config)
+            # ✅ Load config directly from .env
+            self.connection = pymysql.connect(
+                host=Env.require("DB_HOST"),
+                user=Env.require("DB_USER"),
+                password=Env.require("DB_PASSWORD"),
+                database=Env.require("DB_NAME"),
+                port=int(Env.get("DB_PORT", 3306)),
+                cursorclass=pymysql.cursors.DictCursor
+            )
             return self.connection
+
         except Exception as e:
             raise ConnectionError(f"Database connection failed: {str(e)}")
 
@@ -39,10 +44,6 @@ class Database:
     # ==============================
 
     def execute(self, query: str, params: tuple = None) -> int:
-        """
-        Insert/Update/Delete operations
-        Returns affected rows
-        """
         conn = self.connect()
         try:
             with conn.cursor() as cursor:
@@ -84,5 +85,5 @@ class Database:
             return False
 
 
-# Singleton instance for app-wide reuse
+# Singleton instance
 db = Database()

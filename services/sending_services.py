@@ -1,3 +1,4 @@
+#services/sending_services.py
 from services.log_service import LogService
 from utils.validators import Validators
 
@@ -48,3 +49,55 @@ class SendingService:
 
     def get_all(self):
         return self.db.fetch_all("SELECT * FROM sending")
+    
+    def mark_as_collected(self,
+        user_id: int,
+        sending_id: int,
+        collected_name: str,
+        collected_phone: str
+    ):
+        # 🔎 Get original record
+        record = self.db.fetch_one(
+            "SELECT * FROM sending WHERE id=%s",
+            (sending_id,)
+        )
+
+        if not record:
+            raise ValueError("Record not found")
+
+        Validators.validate_required(collected_name, "Collector name required")
+        Validators.validate_phone(collected_phone)
+
+        try:
+            # ✅ Insert into collected
+            self.db.execute(
+                """
+                INSERT INTO collected (
+                    sending_id, product_id,
+                    customer_name, customer_contact,
+                    description,
+                    collected_by_name, collected_by_phone
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (
+                    sending_id,
+                    record["product_id"],
+                    record["customer_name"],
+                    record["customer_contact"],
+                    record["description"],
+                    collected_name,
+                    collected_phone
+                )
+            )
+
+            # ❌ Remove from sending
+            self.db.execute(
+                "DELETE FROM sending WHERE id=%s",
+                (sending_id,)
+            )
+
+            self.logger.log(user_id, "MOVE", "sending→collected", sending_id)
+
+        except Exception as e:
+            raise e

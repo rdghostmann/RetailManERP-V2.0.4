@@ -37,7 +37,8 @@ class Dashboard:
         self.sending_service = SendingService(db)
         self.returns_service = ReturnsService(db)
 
-        ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
+        # ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
+        ctk.set_appearance_mode("dark")  # 🔒 Force dark mode
 
         self.root = ctk.CTk()
         self.root.title("RetailMan V2.0.1 Dashboard")
@@ -140,8 +141,7 @@ class Dashboard:
         header.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkLabel(header, text="RetailMan", font=("Arial", 18)).pack()
-        ctk.CTkLabel(header, text=f"Role: {self.user['role'].title()}",
-                     font=("Arial", 10), text_color="gray").pack()
+        ctk.CTkLabel(header, text=f"Role: {self.user['role'].title()}", font=("Arial", 10), text_color="gray").pack()
 
         self.create_sidebar_button("Dashboard", self.icons["dashboard"], self.show_dashboard, "dashboard").pack(fill="x", padx=10, pady=5)
        
@@ -153,6 +153,7 @@ class Dashboard:
         self.create_sidebar_button("Plaza", self.icons["plaza"], self.open_plaza, "plaza").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("Returns", self.icons["returns"], self.open_returns, "returns").pack(fill="x", padx=10, pady=5)
         self.create_sidebar_button("Sending", self.icons["sending"], self.open_sending, "sending").pack(fill="x", padx=10, pady=5)
+        self.create_sidebar_button("Collected",self.icons["collected"], self.open_collected, "collected").pack(fill="x", padx=10, pady=5)
 
         if self.user["role"] == "admin":
             self.create_sidebar_button("Logs", self.icons["logs"], self.open_logs, "logs").pack(fill="x", padx=10, pady=5)
@@ -162,17 +163,7 @@ class Dashboard:
         theme_icon = self.icons["light"] if current_theme_is_dark else self.icons["moon"]
         theme_text = "Light Theme" if current_theme_is_dark else "Dark Theme"
 
-        ctk.CTkButton(
-            self.sidebar,
-            text=theme_text,
-            image=theme_icon,
-            compound="left",
-            fg_color="transparent",
-            text_color="gray",
-            hover_color="#003F7D",
-            command=self.toggle_theme,
-            anchor="w"
-        ).pack(fill="x", padx=10, pady=5)
+    
 
         ctk.CTkButton(self.sidebar, text="  Logout",
                 image=self.icons["logout"],
@@ -203,6 +194,31 @@ class Dashboard:
         self.sales_card = self.create_card(self.kpi_frame, "Sales", "0", self.icons["sales"])
         self.sending_card = self.create_card(self.kpi_frame, "Dispatch", "0", self.icons["dispatch"])
         self.returns_card = self.create_card(self.kpi_frame, "Returns", "0", self.icons["returns_kpi"])
+
+        # 🚨 CRITICAL STOCK ALERT
+        self.alert_frame = ctk.CTkFrame(self.content)
+        self.alert_frame.pack(fill="x", padx=10, pady=10)
+
+        ctk.CTkLabel(
+            self.alert_frame,
+            text="🚨 Low Stock Alert (Qty < 5)",
+            font=("Arial", 16),
+            text_color="#F87171"
+        ).pack(anchor="w", padx=10)
+
+        self.alert_table = ttk.Treeview(
+            self.alert_frame,
+            columns=("Name", "Brand", "Qty"),
+            show="headings",
+            height=5
+        )
+
+        for col in ("Name", "Brand", "Qty"):
+            self.alert_table.heading(col, text=col)
+            self.alert_table.column(col, anchor="w", width=200)
+
+        self.alert_table.pack(fill="x", padx=10, pady=5)
+
 
         # 📦 Inventory Table (UPDATED)
         self.inventory_frame = ctk.CTkFrame(self.content)
@@ -264,6 +280,13 @@ class Dashboard:
 
         return value_label
 
+    def open_collected(self):
+        self.set_active_tab("collected", lambda: None)
+        self.clear_content()
+        from ui.collected import CollectedPage
+        CollectedPage(self.content, self.db, self.user)
+
+
     # ==============================
     # 📊 DATA LOADING
     # ==============================
@@ -271,7 +294,8 @@ class Dashboard:
     def load_dashboard_data(self):
         try:
             products = self.db.fetch_all("SELECT id FROM products")
-            total_products = len(products)  
+            total_products = len(products)
+
             stock_data = self.stock_service.get_all_stock()
             total_stock = sum(row["quantity"] for row in stock_data)
 
@@ -286,11 +310,14 @@ class Dashboard:
             self.sending_card.configure(text=str(len(sending_data)))
             self.returns_card.configure(text=str(len(returns_data)))
 
-            # 🔄 CLEAR TABLE
+            # 🔄 CLEAR TABLES
             for item in self.inventory_table.get_children():
                 self.inventory_table.delete(item)
 
-            # ✅ AGGREGATE UNIQUE PRODUCTS (FIXED)
+            for item in self.alert_table.get_children():
+                self.alert_table.delete(item)
+
+            # ✅ AGGREGATE STOCK FIRST (IMPORTANT)
             aggregated = {}
 
             for row in stock_data:
@@ -305,8 +332,26 @@ class Dashboard:
                     }
 
                 aggregated[key]["quantity"] += row["quantity"]
-                 
-            # ✅ INSERT INTO TABLE
+
+            # 🚨 LOW STOCK FILTER
+            low_stock_items = [
+                item for item in aggregated.values()
+                if item["quantity"] < 5
+            ]
+
+            # 🚨 INSERT ALERT TABLE
+            for item in low_stock_items:
+                self.alert_table.insert(
+                    "",
+                    "end",
+                    values=(
+                        item["name"],
+                        item["brand"],
+                        item["quantity"]
+                    )
+                )
+
+            # 📦 INSERT INVENTORY TABLE
             for item in aggregated.values():
                 self.inventory_table.insert(
                     "",
@@ -372,8 +417,8 @@ class Dashboard:
 
     def toggle_theme(self):
         theme_manager.toggle_theme()
-        # ctk.set_appearance_mode("dark")
-        ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
+        # ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
+        ctk.set_appearance_mode("dark")  # 🔒 Force dark mode
         self.refresh_sidebar()
 
     def logout(self):

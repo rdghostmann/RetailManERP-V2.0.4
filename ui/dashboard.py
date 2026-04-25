@@ -4,6 +4,8 @@ from tkinter import messagebox, ttk
 import sys
 import os
 from utils.resource_path import resource_path
+from utils.license_manager import LicenseManager
+from tkinter import messagebox
 
 
 from ui.logs import LogsPage
@@ -24,6 +26,10 @@ from ui.sending import SendingPage
 from ui.user import UserPage
 
 from PIL import Image
+
+from utils.license_manager import LicenseManager
+
+LicenseManager.initialize()
 
 
 class Dashboard:
@@ -88,7 +94,13 @@ class Dashboard:
         self.build_layout()
         self.load_dashboard_data()
 
-
+        if LicenseManager.is_expired() and not LicenseManager.is_licensed():
+            messagebox.showerror(
+                "License Expired",
+                "Your trial has expired.\nPlease contact developer to activate."
+            )
+            self.show_license_prompt()
+            return
     # ==============================
     # 🧱 LAYOUT
     # ==============================
@@ -432,3 +444,26 @@ class Dashboard:
 
     def run(self):
         self.root.mainloop()
+
+    def show_license_prompt(self):
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Activate License")
+        dialog.geometry("400x200")
+
+        ctk.CTkLabel(dialog, text="Enter License Key").pack(pady=10)
+
+        entry = ctk.CTkEntry(dialog, width=300)
+        entry.pack(pady=10)
+
+        def activate():
+            from utils.license_manager import LicenseManager
+
+            if LicenseManager.activate(entry.get()):
+                messagebox.showinfo("Success", "License Activated")
+                dialog.destroy()
+                self.build_layout()
+                self.load_dashboard_data()
+            else:
+                messagebox.showerror("Error", "Invalid License Key")
+
+        ctk.CTkButton(dialog, text="Activate", command=activate).pack(pady=10)

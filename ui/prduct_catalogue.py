@@ -88,31 +88,79 @@ class ProductCataloguePage:
         search_entry.pack(side="left", fill="x", expand=True, padx=5)
         search_entry.bind("<KeyRelease>", self.filter_products)
 
-        # ===== TABLE =====
+            # ===== TABLE =====
         table_frame = ctk.CTkFrame(self.frame)
         table_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # =========================
+        # 🎨 TREEVIEW STYLE (UPDATED)
+        # =========================
+        style = ttk.Style()
+
+        style.theme_use("default")
+
+        # Body
+        style.configure(
+            "Treeview",
+            background="#1E1E1E",
+            foreground="white",
+            fieldbackground="#1E1E1E",
+            rowheight=30,
+            bordercolor="#404040",
+            borderwidth=1,
+            relief="solid"
+        )
+
+        # Header
+        style.configure(
+            "Treeview.Heading",
+            background="#00509D",
+            foreground="white",
+            relief="flat",
+            borderwidth=1
+        )
+
+        # Selected row
+        style.map(
+            "Treeview",
+            background=[("selected", "#1f538d")]
+        )
+
+        # =========================
+        # TREEVIEW
+        # =========================
         self.tree = ttk.Treeview(
             table_frame,
             columns=("Name", "Brand", "Description"),
             show="headings"
         )
 
+        # Center align ALL columns
         for col in ("Name", "Brand", "Description"):
-            self.tree.heading(col, text=col,
-                              command=lambda c=col: self.sort_by_column(c))
-            self.tree.column(col, anchor="w", width=200)
+            self.tree.heading(
+                col,
+                text=col,
+                anchor="center",
+                command=lambda c=col: self.sort_by_column(c)
+            )
 
+            self.tree.column(
+                col,
+                anchor="center",  # ✅ center text
+                width=200
+            )
+
+        # Scrollbar
         scrollbar = ttk.Scrollbar(
-            table_frame, orient="vertical", command=self.tree.yview
+            table_frame,
+            orient="vertical",
+            command=self.tree.yview
         )
+
         self.tree.configure(yscrollcommand=scrollbar.set)
 
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-
-        # Fill form on select
-        self.tree.bind("<<TreeviewSelect>>", self.on_select)
 
     # =========================
     # CREATE

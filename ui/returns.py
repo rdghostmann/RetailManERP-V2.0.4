@@ -2,6 +2,7 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import pandas as pd
+from datetime import datetime
 from PIL import Image
 
 from services.returns_services import ReturnsService
@@ -20,8 +21,8 @@ class ReturnsPage:
         self.product_service = ProductService(db)
 
         self.fetched_sale = None
+        self.all_data = []
 
-        # ✅ Load export icon
         self.export_icon = ctk.CTkImage(
             Image.open(resource_path("public/export-xlsx.png")),
             size=(18, 18)
@@ -33,46 +34,41 @@ class ReturnsPage:
         self.build_ui()
         self.load_table()
 
+    # =========================
+    # UI
+    # =========================
     def build_ui(self):
-  
 
         ctk.CTkLabel(
             self.frame,
             text="Plaza Returns Management",
             font=("Arial", 18)
         ).pack(pady=10)
-         
-        # Form
+
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
-        # IMEI input
         self.imei_entry = ctk.CTkEntry(form, placeholder_text="Enter Product IMEI")
         self.imei_entry.pack(side="left", padx=5)
         self.imei_entry.bind("<KeyRelease>", lambda e: self.lookup_sale())
 
-        # Sale info
         self.sale_info_label = ctk.CTkLabel(form, text="No sale found", text_color="gray")
         self.sale_info_label.pack(side="left", padx=5)
 
-        # 🔒 Fixed quantity = 1
         self.return_qty_entry = ctk.CTkEntry(form, width=80)
         self.return_qty_entry.insert(0, "1")
         self.return_qty_entry.configure(state="disabled")
         self.return_qty_entry.pack(side="left", padx=5)
 
-        # Reason
         self.reason_entry = ctk.CTkEntry(form, placeholder_text="Reason for return")
         self.reason_entry.pack(side="left", padx=5)
 
-        # Record button
         ctk.CTkButton(
             form,
             text="Record Return",
             command=self.record_return
         ).pack(side="left", padx=5)
 
-        # ✅ Export Button with Image
         ctk.CTkButton(
             form,
             text=" Export Excel",
@@ -83,7 +79,7 @@ class ReturnsPage:
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
-        # ===== SEARCH BAR =====
+        # SEARCH
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
 
@@ -92,25 +88,53 @@ class ReturnsPage:
         search_entry = ctk.CTkEntry(
             search_frame,
             textvariable=self.search_var,
-            placeholder_text="🔍 Search returns (product, IMEI, customer...)"
+            placeholder_text="🔍 Search returns..."
         )
         search_entry.pack(fill="x", padx=5)
-
         search_entry.bind("<KeyRelease>", self.filter_table)
 
-        # Table
+       # ===== TABLE =====
+        style = ttk.Style()
+
+        # Base table styling
+        style.configure(
+            "Treeview",
+            rowheight=28,
+            font=("Arial", 12)
+        )
+
+        # Header styling
+        style.configure(
+            "Treeview.Heading",
+            font=("Arial", 12, "bold"),
+            anchor="center"
+        )
+
         self.tree = ttk.Treeview(
             self.frame,
-            columns=("Product", "IMEI", "Colour", "Customer", "Returned Qty", "Reason"),
+            columns=("Product", "IMEI", "Colour", "Customer", "Returned Qty", "Reason", "Date"),
             show="headings"
         )
 
-        for col in ("Product", "IMEI", "Colour", "Customer", "Returned Qty", "Reason"):
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=130)
+        for col in self.tree["columns"]:
+            self.tree.heading(col, text=col, anchor="center")   # ✅ center header
+            self.tree.column(col, width=130, anchor="center")   # ✅ center cell content
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
+    # =========================
+    # FORMAT DATE
+    # =========================
+    def format_date(self, dt):
+        if not dt:
+            return "-"
+        if isinstance(dt, str):
+            return dt
+        return dt.strftime("%Y-%m-%d %H:%M")
+
+    # =========================
+    # LOOKUP
+    # =========================
     def lookup_sale(self):
         imei = self.imei_entry.get().strip()
 
@@ -128,63 +152,52 @@ class ReturnsPage:
                 return
 
             self.fetched_sale = sale
-            sale_text = f"{sale['product_name']} | {sale['colour']} | {sale['customer_name']} | Qty: {sale['quantity']}"
-            self.sale_info_label.configure(text=sale_text, text_color="green")
+            self.sale_info_label.configure(
+                text=f"{sale['product_name']} | {sale['colour']} | {sale['customer_name']}",
+                text_color="green"
+            )
 
         except Exception as e:
-            self.fetched_sale = None
-            self.sale_info_label.configure(text=f"Error: {str(e)}", text_color="red")
+            self.sale_info_label.configure(text=str(e), text_color="red")
 
+    # =========================
+    # RECORD RETURN
+    # =========================
     def record_return(self):
         try:
             if not self.fetched_sale:
-                raise ValueError("Please enter a valid product IMEI")
-
-            return_qty = 1
-            Validators.validate_quantity(return_qty)
+                raise ValueError("Invalid IMEI")
 
             self.returns_service.create_return(
                 self.user["id"],
                 self.fetched_sale["id"],
-                return_qty,
+                1,
                 self.reason_entry.get().strip()
             )
 
-            messagebox.showinfo("Success", "Return recorded successfully")
+            messagebox.showinfo("Success", "Return recorded")
 
-            # Reset form
             self.imei_entry.delete(0, "end")
             self.reason_entry.delete(0, "end")
             self.fetched_sale = None
-            self.sale_info_label.configure(text="No sale found", text_color="gray")
 
             self.load_table()
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
+    # =========================
+    # LOAD TABLE
+    # =========================
     def load_table(self):
-        self.all_data = self.returns_service.get_all()
+        self.all_data = self.returns_service.get_all() or []
         self.display_table(self.all_data)
 
-        for row in self.tree.get_children():
-            self.tree.delete(row)
-
-        data = self.returns_service.get_all()
-
-        for row in data:
-            self.tree.insert("", "end", values=(
-                row["product_name"],
-                row["imei"],
-                row["colour"],
-                row["customer_name"],
-                row["quantity"],
-                row["reason"]
-            ))
-
+    # =========================
+    # DISPLAY TABLE
+    # =========================
     def display_table(self, data):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+        self.tree.delete(*self.tree.get_children())
 
         for row in data:
             self.tree.insert("", "end", values=(
@@ -193,10 +206,13 @@ class ReturnsPage:
                 row["colour"],
                 row["customer_name"],
                 row["quantity"],
-                row["reason"]
+                row["reason"],
+                self.format_date(row.get("created_at"))  # ✅ DATE
             ))
 
-
+    # =========================
+    # FILTER
+    # =========================
     def filter_table(self, event=None):
         keyword = self.search_var.get().lower()
 
@@ -210,33 +226,30 @@ class ReturnsPage:
 
         self.display_table(filtered)
 
-    # ==============================
-    # 📤 EXPORT TO EXCEL
-    # ==============================
+    # =========================
+    # EXPORT
+    # =========================
     def export_to_excel(self):
         try:
-            data = self.returns_service.get_all()
-
-            if not data:
-                messagebox.showwarning("No Data", "No return data to export")
+            if not self.all_data:
+                messagebox.showwarning("No Data", "No return data")
                 return
 
-            df = pd.DataFrame(data)
+            formatted = [{
+                "Product": r["product_name"],
+                "IMEI": r["imei"],
+                "Colour": r["colour"],
+                "Customer": r["customer_name"],
+                "Returned Qty": r["quantity"],
+                "Reason": r["reason"],
+                "Date": self.format_date(r.get("created_at"))
+            } for r in self.all_data]
 
-            # Clean column names
-            df = df.rename(columns={
-                "product_name": "Product",
-                "imei": "IMEI",
-                "colour": "Colour",
-                "customer_name": "Customer",
-                "quantity": "Returned Qty",
-                "reason": "Reason"
-            })
+            df = pd.DataFrame(formatted)
 
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                title="Save Excel File"
+                filetypes=[("Excel files", "*.xlsx")]
             )
 
             if not file_path:
@@ -244,7 +257,7 @@ class ReturnsPage:
 
             df.to_excel(file_path, index=False)
 
-            messagebox.showinfo("Success", "Returns exported successfully")
+            messagebox.showinfo("Success", "Exported successfully")
 
         except Exception as e:
             messagebox.showerror("Export Error", str(e))

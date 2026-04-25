@@ -2,8 +2,10 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import pandas as pd
+from datetime import datetime
 
 from app.config import UIConfig
+
 
 class LogsPage:
     def __init__(self, root, db, user):
@@ -57,7 +59,31 @@ class LogsPage:
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
-        # 📊 Logs Table (Record ID removed)
+        # ======================
+        # 📊 TABLE (UPDATED)
+        # ======================
+        style = ttk.Style()
+
+        style.configure(
+            "Treeview",
+            rowheight=28,
+            font=("Arial", 12),
+            foreground="black",          # ✅ Force black text
+            fieldbackground="white"
+        )
+
+        style.configure(
+            "Treeview.Heading",
+            font=("Arial", 12, "bold"),
+            anchor="center"
+        )
+
+        style.map(
+            "Treeview",
+            background=[("selected", "#1f538d")],
+            foreground=[("selected", "white")]
+        )
+
         self.tree = ttk.Treeview(
             self.frame,
             columns=("User", "Action", "Table", "Date"),
@@ -65,21 +91,20 @@ class LogsPage:
         )
 
         for col in ("User", "Action", "Table", "Date"):
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=140)
+            self.tree.heading(col, text=col, anchor="center")   # ✅ Center header
+            self.tree.column(col, width=160, anchor="center")   # ✅ Center cells
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # 🎨 Styling
-        self.tree.tag_configure("danger", background="#ffe5e5")
-        self.tree.tag_configure("info", background="#e1effe")
+        # 🎨 Row tag styles
+        self.tree.tag_configure("danger", background="#ffe5e5", foreground="black")
+        self.tree.tag_configure("info", background="#e1effe", foreground="black")
 
     # ==============================
     # 📥 LOAD LOGS
     # ==============================
     def load_logs(self):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+        self.tree.delete(*self.tree.get_children())
 
         try:
             search = self.search_entry.get().strip()
@@ -102,9 +127,9 @@ class LogsPage:
                 """
                 data = self.db.fetch_all(query)
 
-            self.current_data = data  # store for export
+            self.current_data = data or []
 
-            for log in data:
+            for log in self.current_data:
                 tag = "danger" if log["action"] == "DELETE" else "info"
 
                 self.tree.insert(
@@ -114,7 +139,7 @@ class LogsPage:
                         log["name"],
                         log["action"],
                         log["table_name"],
-                        log["created_at"]
+                        self.format_date(log["created_at"])
                     ),
                     tags=(tag,)
                 )
@@ -123,17 +148,27 @@ class LogsPage:
             messagebox.showerror("Error", str(e))
 
     # ==============================
+    # 🗓 FORMAT DATE
+    # ==============================
+    def format_date(self, dt):
+        try:
+            if isinstance(dt, str):
+                return dt
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return str(dt)
+
+    # ==============================
     # 📤 EXPORT TO EXCEL
     # ==============================
     def export_to_excel(self):
         try:
-            if not hasattr(self, "current_data") or not self.current_data:
+            if not self.current_data:
                 messagebox.showwarning("No Data", "No logs available to export")
                 return
 
             df = pd.DataFrame(self.current_data)
 
-            # Clean columns
             df = df.rename(columns={
                 "name": "User",
                 "action": "Action",

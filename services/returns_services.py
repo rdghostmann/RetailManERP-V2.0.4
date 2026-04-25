@@ -1,3 +1,4 @@
+# services/returns_services.py
 from services.log_service import LogService
 from utils.validators import Validators
 
@@ -84,9 +85,19 @@ class ReturnsService:
 
     def get_all(self):
         query = """
-        SELECT r.*, p.customer_name, p.customer_phone, p.imei, p.colour, pr.name as product_name
+        SELECT 
+            r.id,
+            r.created_at,  -- ✅ REQUIRED
+            p.customer_name,
+            p.customer_phone,
+            p.imei,
+            p.colour,
+            pr.name as product_name,
+            r.quantity,
+            r.reason
         FROM returns r
         JOIN plaza p ON r.plaza_id = p.id
         JOIN products pr ON p.product_id = pr.id
+        ORDER BY r.created_at DESC
         """
         return self.db.fetch_all(query)

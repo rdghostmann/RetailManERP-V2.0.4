@@ -48,7 +48,11 @@ class SendingService:
             raise e
 
     def get_all(self):
-        return self.db.fetch_all("SELECT * FROM sending")
+        return self.db.fetch_all("""
+            SELECT *
+            FROM sending
+            ORDER BY created_at DESC
+        """)
     
     def mark_as_collected(self,
         user_id: int,

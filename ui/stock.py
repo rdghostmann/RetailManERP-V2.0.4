@@ -7,7 +7,7 @@ from utils.validators import Validators
 import pandas as pd
 from PIL import Image
 from utils.resource_path import resource_path
-
+from datetime import datetime
 
 class StockPage:
 
@@ -19,7 +19,6 @@ class StockPage:
         self.stock_service = StockService(db)
         self.product_service = ProductService(db)
 
-        # State
         self.all_stock = []
         self.filtered_stock = []
         self.sort_column = None
@@ -36,57 +35,31 @@ class StockPage:
         self.build_ui()
         self.load_table()
 
-    # =========================
-    # 🔐 IMEI VALIDATION (INPUT LEVEL)
-    # =========================
     def validate_imei_input(self, value):
         return (value.isdigit() and len(value) <= 15) or value == ""
 
-    # =========================
-    # UI
-    # =========================
     def build_ui(self):
         style = ttk.Style()
         style.theme_use("default")
 
-        style.configure(
-            "Treeview.Heading",
-            font=("Arial", 11, "bold"),
-            borderwidth=1,
-            relief="solid"
-        )
+        style.configure("Treeview.Heading", font=("Arial", 11, "bold"))
+        style.configure("Treeview", rowheight=28)
 
-        style.configure(
-            "Treeview",
-            rowheight=28,
-            borderwidth=1,
-            relief="solid"
-        )
-
-        style.map(
-            "Treeview",
-            background=[("selected", "#2563EB")]
-        )
-
-        # Title
         ctk.CTkLabel(
             self.frame,
             text="Stock Management",
             font=("Arial", 18)
         ).pack(pady=10)
 
-        # =========================
-        # FORM
-        # =========================
+        # ===== FORM =====
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
-        # Products
         products = self.product_service.get_all()
         self.product_map = {p["name"]: p["id"] for p in products} if products else {}
 
         self.product_var = ctk.StringVar()
-        product_values = list(self.product_map.keys()) if self.product_map else []
+        product_values = list(self.product_map.keys())
 
         self.product_dropdown = ctk.CTkComboBox(
             form,
@@ -95,11 +68,9 @@ class StockPage:
         )
         self.product_dropdown.pack(side="left", padx=5)
 
-        # ✅ Auto-select first product
         if product_values:
             self.product_var.set(product_values[0])
 
-        # IMEI field with validation
         vcmd = (self.root.register(self.validate_imei_input), "%P")
 
         self.imei_entry = ctk.CTkEntry(
@@ -113,27 +84,19 @@ class StockPage:
         self.colour_entry = ctk.CTkEntry(form, placeholder_text="Colour")
         self.colour_entry.pack(side="left", padx=5)
 
-        # Add button
-        ctk.CTkButton(
-            form,
-            text="Add Stock",
-            command=self.add_stock
-        ).pack(side="left", padx=5)
+        ctk.CTkButton(form, text="Add Stock", command=self.add_stock)\
+            .pack(side="left", padx=5)
 
-        # Export button
         ctk.CTkButton(
             form,
             text=" Export Excel",
             image=self.export_icon,
             compound="left",
             fg_color="#16A34A",
-            hover_color="#15803D",
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
-        # =========================
-        # 🔍 SEARCH
-        # =========================
+        # ===== SEARCH =====
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
 
@@ -142,32 +105,29 @@ class StockPage:
         search_entry = ctk.CTkEntry(
             search_frame,
             textvariable=self.search_var,
-            placeholder_text="Search by Product, IMEI, or Colour..."
+            placeholder_text="Search by Product, IMEI, Colour..."
         )
-        search_entry.pack(fill="x", expand=True, padx=5)
+        search_entry.pack(fill="x", padx=5)
 
         search_entry.bind("<KeyRelease>", self.filter_table)
 
-        # =========================
-        # TABLE
-        # =========================
+        # ===== TABLE =====
         tree_frame = ctk.CTkFrame(self.frame)
         tree_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         self.tree = ttk.Treeview(
             tree_frame,
-            columns=("Product", "IMEI", "Colour", "Qty"),
-            show="headings",
-            style="Treeview"
+            columns=("Product", "IMEI", "Colour", "Qty", "Date"),
+            show="headings"
         )
 
-        for col in ("Product", "IMEI", "Colour", "Qty"):
+        for col in ("Product", "IMEI", "Colour", "Qty", "Date"):
             self.tree.heading(
                 col,
                 text=col,
                 command=lambda c=col: self.sort_by_column(c)
             )
-            self.tree.column(col, width=150, anchor="center")
+            self.tree.column(col, width=140, anchor="center")
 
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -175,45 +135,30 @@ class StockPage:
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-    # =========================
-    # ADD STOCK
-    # =========================
     def add_stock(self):
         try:
             product_name = self.product_var.get()
             imei = self.imei_entry.get().strip()
             colour = self.colour_entry.get().strip()
 
-            if not self.product_map:
-                raise ValueError("No products available. Create product first.")
-
             if product_name not in self.product_map:
-                raise ValueError("Invalid product selected")
-
-            if not imei:
-                raise ValueError("IMEI is required")
+                raise ValueError("Invalid product")
 
             if len(imei) != 15:
-                raise ValueError("IMEI must be exactly 15 digits")
-
-            if not colour:
-                raise ValueError("Colour is required")
+                raise ValueError("IMEI must be 15 digits")
 
             Validators.validate_imei(imei)
 
-            product_id = self.product_map[product_name]
-
             self.stock_service.add_stock(
                 self.user["id"],
-                product_id,
+                self.product_map[product_name],
                 imei,
                 colour,
                 1
             )
 
-            messagebox.showinfo("Success", "Stock added successfully")
+            messagebox.showinfo("Success", "Stock added")
 
-            # Reset fields
             self.imei_entry.delete(0, "end")
             self.colour_entry.delete(0, "end")
 
@@ -222,20 +167,20 @@ class StockPage:
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-    # =========================
-    # LOAD TABLE
-    # =========================
     def load_table(self):
         data = self.stock_service.get_all_stock() or []
-
-        # ✅ Ensure list
         self.all_stock = list(data)
         self.filtered_stock = self.all_stock.copy()
         self.display_table(self.filtered_stock)
 
-    # =========================
-    # DISPLAY TABLE
-    # =========================
+    def format_date(self, value):
+        if not value:
+            return ""
+        try:
+            return value.strftime("%Y-%m-%d %H:%M")
+        except:
+            return str(value)
+
     def display_table(self, data):
         self.tree.delete(*self.tree.get_children())
 
@@ -243,18 +188,15 @@ class StockPage:
             self.tree.insert(
                 "",
                 "end",
-                iid=row["id"],
                 values=(
                     row["name"],
                     row["imei"],
                     row["colour"],
-                    row["quantity"]
+                    row["quantity"],
+                    self.format_date(row.get("created_at"))
                 )
             )
 
-    # =========================
-    # 🔍 FILTER
-    # =========================
     def filter_table(self, event=None):
         keyword = self.search_var.get().lower()
 
@@ -267,15 +209,13 @@ class StockPage:
 
         self.display_table(self.filtered_stock)
 
-    # =========================
-    # ↕️ SORT
-    # =========================
     def sort_by_column(self, col):
         mapping = {
             "Product": "name",
             "IMEI": "imei",
             "Colour": "colour",
-            "Qty": "quantity"
+            "Qty": "quantity",
+            "Date": "created_at"
         }
 
         db_col = mapping[col]
@@ -287,34 +227,25 @@ class StockPage:
             self.sort_reverse = False
 
         self.filtered_stock.sort(
-            key=lambda x: x[db_col] if db_col == "quantity" else str(x[db_col]).lower(),
+            key=lambda x: x.get(db_col) or "",
             reverse=self.sort_reverse
         )
 
         self.display_table(self.filtered_stock)
 
-    # =========================
-    # EXPORT TO EXCEL
-    # =========================
     def export_to_excel(self):
         try:
             data = self.filtered_stock or self.all_stock
 
             if not data:
-                messagebox.showwarning("No Data", "No stock data to export")
+                messagebox.showwarning("No Data", "No stock data")
                 return
 
-            df = pd.DataFrame(data).rename(columns={
-                "name": "Product",
-                "imei": "IMEI",
-                "colour": "Colour",
-                "quantity": "Quantity"
-            })
+            df = pd.DataFrame(data)
 
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                title="Save Excel File"
+                filetypes=[("Excel files", "*.xlsx")]
             )
 
             if not file_path:
@@ -322,7 +253,7 @@ class StockPage:
 
             df.to_excel(file_path, index=False)
 
-            messagebox.showinfo("Success", "Data exported successfully")
+            messagebox.showinfo("Success", "Exported")
 
         except Exception as e:
             messagebox.showerror("Export Error", str(e))

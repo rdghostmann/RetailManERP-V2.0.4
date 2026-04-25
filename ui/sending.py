@@ -7,6 +7,8 @@ from utils.validators import Validators
 import pandas as pd
 from PIL import Image
 from utils.resource_path import resource_path
+from datetime import datetime
+
 
 class SendingPage:
     def __init__(self, root, db, user):
@@ -62,14 +64,8 @@ class SendingPage:
         self.desc_entry = ctk.CTkEntry(form, placeholder_text="Description")
         self.desc_entry.pack(side="left", padx=5)
 
-        # ✅ Dispatch button (RESTORED)
-        ctk.CTkButton(
-            form,
-            text="Dispatch",
-            command=self.dispatch
-        ).pack(side="left", padx=5)
+        ctk.CTkButton(form, text="Dispatch", command=self.dispatch).pack(side="left", padx=5)
 
-        # ✅ Mark collected
         ctk.CTkButton(
             form,
             text="Mark as Collected",
@@ -77,7 +73,6 @@ class SendingPage:
             command=self.open_collect_dialog
         ).pack(side="left", padx=5)
 
-        # Export
         ctk.CTkButton(
             form,
             text=" Export Excel",
@@ -87,20 +82,47 @@ class SendingPage:
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
-        # ===== TABLE =====
+        # ======================
+        # TABLE (CENTER ALIGNED)
+        # ======================
+        style = ttk.Style()
+
+        # Base styling
+        style.configure(
+            "Treeview",
+            rowheight=28,
+            font=("Arial", 12)
+        )
+
+        # Header styling
+        style.configure(
+            "Treeview.Heading",
+            font=("Arial", 12, "bold"),
+            anchor="center"
+        )
+
+        # Selection styling (optional but recommended)
+        style.map(
+            "Treeview",
+            background=[("selected", "#1f538d")],
+            foreground=[("selected", "white")]
+        )
+
         self.tree = ttk.Treeview(
             self.frame,
-            columns=("ID", "Product", "Customer", "Contact", "Description"),
+            columns=("ID", "Product", "Customer", "Contact", "Description", "Date"),
             show="headings"
         )
 
-        for col in ("ID", "Product", "Customer", "Contact", "Description"):
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=140)
+        for col in ("ID", "Product", "Customer", "Contact", "Description", "Date"):
+            self.tree.heading(col, text=col, anchor="center")   # ✅ Center header text
+            self.tree.column(col, width=140, anchor="center")   # ✅ Center cell values
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # ===== SEARCH =====
+        # ======================
+        # SEARCH
+        # ======================
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10)
 
@@ -109,7 +131,7 @@ class SendingPage:
         search_entry = ctk.CTkEntry(
             search_frame,
             textvariable=self.search_var,
-            placeholder_text="Search..."
+            placeholder_text="Search dispatch..."
         )
         search_entry.pack(fill="x", padx=5)
         search_entry.bind("<KeyRelease>", self.filter_table)
@@ -147,6 +169,11 @@ class SendingPage:
         self.all_data = self.sending_service.get_all()
         self.display_table(self.all_data)
 
+    def format_date(self, dt):
+        if not dt:
+            return "-"
+        return dt.strftime("%Y-%m-%d %H:%M")
+
     def display_table(self, data):
         for row in self.tree.get_children():
             self.tree.delete(row)
@@ -160,11 +187,12 @@ class SendingPage:
             product_name = product["name"] if product else "Unknown"
 
             self.tree.insert("", "end", values=(
-                row["id"],  # ✅ IMPORTANT
+                row["id"],
                 product_name,
                 row["customer_name"],
                 row["customer_contact"],
-                row["description"]
+                row["description"],
+                self.format_date(row.get("created_at"))
             ))
 
     # ==============================
@@ -193,7 +221,7 @@ class SendingPage:
             return
 
         values = self.tree.item(selected[0])["values"]
-        sending_id = values[0]  # ✅ reliable ID
+        sending_id = values[0]
 
         dialog = ctk.CTkToplevel(self.frame)
         dialog.title("Mark as Collected")
@@ -249,7 +277,8 @@ class SendingPage:
                     "Product": product["name"] if product else "Unknown",
                     "Customer": row["customer_name"],
                     "Contact": row["customer_contact"],
-                    "Description": row["description"]
+                    "Description": row["description"],
+                    "Date": self.format_date(row.get("created_at"))
                 })
 
             df = pd.DataFrame(formatted)

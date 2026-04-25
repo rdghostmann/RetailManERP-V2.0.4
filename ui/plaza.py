@@ -2,7 +2,7 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import pandas as pd
-
+from datetime import datetime
 from services.plaza_services import PlazaService
 from services.product_service import ProductService
 from utils.validators import Validators
@@ -36,15 +36,16 @@ class PlazaPage:
         self.build_ui()
         self.load_table()
 
+    # =========================
+    # UI
+    # =========================
     def build_ui(self):
-        # ===== TITLE =====
         ctk.CTkLabel(
             self.frame,
             text="Plaza - Record Sales",
             font=("Arial", 18)
         ).pack(pady=10)
 
-        # ===== FORM =====
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
@@ -52,7 +53,9 @@ class PlazaPage:
         self.imei_entry.pack(side="left", padx=5)
         self.imei_entry.bind("<KeyRelease>", lambda e: self.lookup_product())
 
-        self.product_info_label = ctk.CTkLabel(form, text="No product selected", text_color="gray")
+        self.product_info_label = ctk.CTkLabel(
+            form, text="No product selected", text_color="gray"
+        )
         self.product_info_label.pack(side="left", padx=5)
 
         self.colour_var = ctk.StringVar()
@@ -65,7 +68,8 @@ class PlazaPage:
         self.customer_phone = ctk.CTkEntry(form, placeholder_text="Phone")
         self.customer_phone.pack(side="left", padx=5)
 
-        ctk.CTkButton(form, text="Record Sale", command=self.record_sale).pack(side="left", padx=5)
+        ctk.CTkButton(form, text="Record Sale", command=self.record_sale)\
+            .pack(side="left", padx=5)
 
         ctk.CTkButton(
             form,
@@ -77,7 +81,7 @@ class PlazaPage:
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
-        # ===== SEARCH BAR (✅ CORRECT POSITION) =====
+        # ===== SEARCH =====
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
 
@@ -89,19 +93,38 @@ class PlazaPage:
             placeholder_text="🔍 Search sales (product, IMEI, customer...)"
         )
         search_entry.pack(fill="x", padx=5)
-
         search_entry.bind("<KeyRelease>", self.filter_table)
 
         # ===== TABLE =====
         self.tree = ttk.Treeview(
             self.frame,
-            columns=("Product", "IMEI", "Colour", "Qty", "Customer", "Phone"),
+            columns=("Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"),
             show="headings"
         )
 
-        for col in ("Product", "IMEI", "Colour", "Qty", "Customer", "Phone"):
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=130)
+        # ===== TABLE =====
+        style = ttk.Style()
+        style.configure(
+            "Treeview",
+            rowheight=28,
+            font=("Arial", 12)
+        )
+
+        style.configure(
+            "Treeview.Heading",
+            font=("Arial", 12, "bold"),
+            anchor="center"
+        )
+
+        self.tree = ttk.Treeview(
+            self.frame,
+            columns=("Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"),
+            show="headings"
+        )
+
+        for col in ("Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"):
+            self.tree.heading(col, text=col, anchor="center")   # ✅ Center header
+            self.tree.column(col, width=130, anchor="center")   # ✅ Center cell content
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -109,23 +132,31 @@ class PlazaPage:
     # DATA
     # =========================
     def load_table(self):
-        self.all_data = self.plaza_service.get_all()
+        self.all_data = self.plaza_service.get_all() or []
 
-        # cache product names (🔥 avoids DB calls in loop)
-        product_ids = list(set(row["product_id"] for row in self.all_data))
+        # Cache product names
+        product_ids = {row["product_id"] for row in self.all_data}
 
         for pid in product_ids:
-            product = self.db.fetch_one(
-                "SELECT name FROM products WHERE id=%s",
-                (pid,)
-            )
-            self.product_cache[pid] = product["name"] if product else "Unknown"
+            if pid not in self.product_cache:
+                product = self.db.fetch_one(
+                    "SELECT name FROM products WHERE id=%s",
+                    (pid,)
+                )
+                self.product_cache[pid] = product["name"] if product else "Unknown"
 
         self.display_table(self.all_data)
 
+    def format_date(self, dt):
+        if not dt:
+            return "-"
+        try:
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except:
+            return str(dt)
+
     def display_table(self, data):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+        self.tree.delete(*self.tree.get_children())
 
         for row in data:
             self.tree.insert("", "end", values=(
@@ -134,18 +165,23 @@ class PlazaPage:
                 row["colour"],
                 row["quantity"],
                 row["customer_name"],
-                row["customer_phone"]
+                row["customer_phone"],
+                self.format_date(row.get("created_at"))
             ))
 
     def filter_table(self, event=None):
-        keyword = self.search_var.get().lower()
+        keyword = self.search_var.get().lower().strip()
+
+        if not keyword:
+            self.display_table(self.all_data)
+            return
 
         filtered = [
             row for row in self.all_data
             if keyword in self.product_cache.get(row["product_id"], "").lower()
-            or keyword in row["imei"].lower()
-            or keyword in row["customer_name"].lower()
-            or keyword in row["customer_phone"].lower()
+            or keyword in str(row["imei"]).lower()
+            or keyword in str(row["customer_name"]).lower()
+            or keyword in str(row["customer_phone"]).lower()
         ]
 
         self.display_table(filtered)
@@ -157,11 +193,7 @@ class PlazaPage:
         imei = self.imei_entry.get().strip()
 
         if not imei:
-            self.fetched_product = None
-            self.available_colours = []
-            self.colour_dropdown.configure(values=[])
-            self.colour_var.set("")
-            self.product_info_label.configure(text="No product selected", text_color="gray")
+            self.reset_lookup()
             return
 
         try:
@@ -171,20 +203,23 @@ class PlazaPage:
                 self.product_info_label.configure(text="IMEI not found", text_color="red")
                 return
 
+            # ✅ FIX: fetch colour using product_id (NOT imei)
             stock_records = self.db.fetch_all(
-                "SELECT DISTINCT colour FROM stock WHERE imei=%s AND quantity > 0",
-                (imei,)
+                "SELECT colour FROM stock WHERE product_id=%s AND quantity > 0",
+                (product["id"],)
             )
 
-            self.available_colours = [s["colour"] for s in stock_records]
+            colours = list({s["colour"] for s in stock_records})
 
-            if not self.available_colours:
+            if not colours:
                 self.product_info_label.configure(text="No stock available", text_color="red")
                 return
 
             self.fetched_product = product
-            self.colour_dropdown.configure(values=self.available_colours)
-            self.colour_var.set(self.available_colours[0])
+            self.available_colours = colours
+
+            self.colour_dropdown.configure(values=colours)
+            self.colour_var.set(colours[0])
 
             self.product_info_label.configure(
                 text=f"{product['name']} ({product['brand']})",
@@ -194,12 +229,25 @@ class PlazaPage:
         except Exception as e:
             self.product_info_label.configure(text=str(e), text_color="red")
 
+    def reset_lookup(self):
+        self.fetched_product = None
+        self.available_colours = []
+        self.colour_dropdown.configure(values=[])
+        self.colour_var.set("")
+        self.product_info_label.configure(text="No product selected", text_color="gray")
+
     def record_sale(self):
         try:
             if not self.fetched_product:
                 raise ValueError("Invalid IMEI")
 
-            Validators.validate_phone(self.customer_phone.get())
+            name = self.customer_name.get().strip()
+            phone = self.customer_phone.get().strip()
+
+            if not name:
+                raise ValueError("Customer name required")
+
+            Validators.validate_phone(phone)
 
             self.plaza_service.record_sale(
                 self.user["id"],
@@ -207,11 +255,17 @@ class PlazaPage:
                 self.imei_entry.get().strip(),
                 self.colour_var.get(),
                 self.quantity,
-                self.customer_name.get().strip(),
-                self.customer_phone.get().strip()
+                name,
+                phone
             )
 
             messagebox.showinfo("Success", "Sale recorded")
+
+            self.imei_entry.delete(0, "end")
+            self.customer_name.delete(0, "end")
+            self.customer_phone.delete(0, "end")
+
+            self.reset_lookup()
             self.load_table()
 
         except Exception as e:
@@ -233,7 +287,8 @@ class PlazaPage:
                     "Colour": row["colour"],
                     "Quantity": row["quantity"],
                     "Customer": row["customer_name"],
-                    "Phone": row["customer_phone"]
+                    "Phone": row["customer_phone"],
+                    "Date": self.format_date(row.get("created_at"))
                 }
                 for row in self.all_data
             ]
@@ -242,8 +297,7 @@ class PlazaPage:
 
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                title="Save Excel File"
+                filetypes=[("Excel files", "*.xlsx")]
             )
 
             if not file_path:

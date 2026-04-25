@@ -75,6 +75,7 @@ class Dashboard:
             "logout": ctk.CTkImage(Image.open(resource_path("public/check-out.png")), size=(20, 20)),
             "moon": ctk.CTkImage(Image.open(resource_path("public/moon.png")), size=(20, 20)),
             "light": ctk.CTkImage(Image.open(resource_path("public/light.png")), size=(20, 20)),
+            "collected": ctk.CTkImage(Image.open(resource_path("public/collected.png")), size=(20, 20)),
 
             # KPI ICONS
             "total-stock": ctk.CTkImage(Image.open(resource_path("public/total-stock.png")), size=(28, 28)),

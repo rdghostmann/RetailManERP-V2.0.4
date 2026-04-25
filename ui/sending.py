@@ -8,7 +8,6 @@ import pandas as pd
 from PIL import Image
 from utils.resource_path import resource_path
 
-
 class SendingPage:
     def __init__(self, root, db, user):
         self.root = root
@@ -20,7 +19,6 @@ class SendingPage:
 
         self.products = self.product_service.get_all()
 
-        # ✅ Load export icon
         self.export_icon = ctk.CTkImage(
             Image.open(resource_path("public/export-xlsx.png")),
             size=(20, 20)
@@ -32,15 +30,17 @@ class SendingPage:
         self.build_ui()
         self.load_table()
 
+    # ==============================
+    # UI
+    # ==============================
     def build_ui(self):
-       
 
         ctk.CTkLabel(
             self.frame,
             text="Dispatch Management",
             font=("Arial", 18)
         ).pack(pady=10)
-         
+
         form = ctk.CTkFrame(self.frame)
         form.pack(fill="x", padx=10, pady=10)
 
@@ -62,32 +62,129 @@ class SendingPage:
         self.desc_entry = ctk.CTkEntry(form, placeholder_text="Description")
         self.desc_entry.pack(side="left", padx=5)
 
-        # Dispatch Button
-        # ctk.CTkButton(
-        #     form,
-        #     text="Dispatch",
-        #     command=self.dispatch
-        # ).pack(side="left", padx=5)
+        # ✅ Dispatch button (RESTORED)
+        ctk.CTkButton(
+            form,
+            text="Dispatch",
+            command=self.dispatch
+        ).pack(side="left", padx=5)
 
+        # ✅ Mark collected
         ctk.CTkButton(
             form,
             text="Mark as Collected",
             fg_color="#F59E0B",
-            hover_color="#D97706",
             command=self.open_collect_dialog
         ).pack(side="left", padx=5)
 
-        # ✅ Export Button with icon
+        # Export
         ctk.CTkButton(
             form,
-            text="  Export Excel",
+            text=" Export Excel",
             image=self.export_icon,
             compound="left",
             fg_color="#16A34A",
-            hover_color="#15803D",
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
+        # ===== TABLE =====
+        self.tree = ttk.Treeview(
+            self.frame,
+            columns=("ID", "Product", "Customer", "Contact", "Description"),
+            show="headings"
+        )
+
+        for col in ("ID", "Product", "Customer", "Contact", "Description"):
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=140)
+
+        self.tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # ===== SEARCH =====
+        search_frame = ctk.CTkFrame(self.frame)
+        search_frame.pack(fill="x", padx=10)
+
+        self.search_var = ctk.StringVar()
+
+        search_entry = ctk.CTkEntry(
+            search_frame,
+            textvariable=self.search_var,
+            placeholder_text="Search..."
+        )
+        search_entry.pack(fill="x", padx=5)
+        search_entry.bind("<KeyRelease>", self.filter_table)
+
+    # ==============================
+    # DISPATCH
+    # ==============================
+    def dispatch(self):
+        try:
+            product = next(p for p in self.products if p["name"] == self.product_var.get())
+
+            self.sending_service.create_dispatch(
+                self.user["id"],
+                product["id"],
+                self.customer_name_entry.get().strip(),
+                self.contact_entry.get().strip(),
+                self.desc_entry.get().strip()
+            )
+
+            messagebox.showinfo("Success", "Dispatch recorded")
+
+            self.customer_name_entry.delete(0, "end")
+            self.contact_entry.delete(0, "end")
+            self.desc_entry.delete(0, "end")
+
+            self.load_table()
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # ==============================
+    # TABLE
+    # ==============================
+    def load_table(self):
+        self.all_data = self.sending_service.get_all()
+        self.display_table(self.all_data)
+
+    def display_table(self, data):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        for row in data:
+            product = self.db.fetch_one(
+                "SELECT name FROM products WHERE id=%s",
+                (row["product_id"],)
+            )
+
+            product_name = product["name"] if product else "Unknown"
+
+            self.tree.insert("", "end", values=(
+                row["id"],  # ✅ IMPORTANT
+                product_name,
+                row["customer_name"],
+                row["customer_contact"],
+                row["description"]
+            ))
+
+    # ==============================
+    # SEARCH
+    # ==============================
+    def filter_table(self, event=None):
+        keyword = self.search_var.get().lower()
+
+        filtered = [
+            row for row in self.all_data
+            if keyword in row["customer_name"].lower()
+            or keyword in row["customer_contact"].lower()
+            or keyword in (row["description"] or "").lower()
+        ]
+
+        self.display_table(filtered)
+
+    # ==============================
+    # COLLECT FLOW
+    # ==============================
     def open_collect_dialog(self):
         selected = self.tree.selection()
 
@@ -95,37 +192,28 @@ class SendingPage:
             messagebox.showwarning("Select", "Select a record first")
             return
 
-        item = self.tree.item(selected[0])
-        values = item["values"]
-
-        self.selected_index = selected[0]
-        self.selected_data = self.all_data[self.tree.index(selected[0])]
+        values = self.tree.item(selected[0])["values"]
+        sending_id = values[0]  # ✅ reliable ID
 
         dialog = ctk.CTkToplevel(self.frame)
         dialog.title("Mark as Collected")
-        dialog.geometry("350x250")
 
-        ctk.CTkLabel(dialog, text="Collector Name").pack(pady=5)
-        name_entry = ctk.CTkEntry(dialog)
-        name_entry.pack(pady=5)
+        name_entry = ctk.CTkEntry(dialog, placeholder_text="Collector Name")
+        name_entry.pack(pady=10)
 
-        ctk.CTkLabel(dialog, text="Collector Phone").pack(pady=5)
-        phone_entry = ctk.CTkEntry(dialog)
-        phone_entry.pack(pady=5)
+        phone_entry = ctk.CTkEntry(dialog, placeholder_text="Collector Phone")
+        phone_entry.pack(pady=10)
 
         def save():
             try:
-                name = name_entry.get().strip()
-                phone = phone_entry.get().strip()
-
                 if not messagebox.askyesno("Confirm", "Mark as collected?"):
                     return
 
                 self.sending_service.mark_as_collected(
                     self.user["id"],
-                    self.selected_data["id"],
-                    name,
-                    phone
+                    sending_id,
+                    name_entry.get().strip(),
+                    phone_entry.get().strip()
                 )
 
                 messagebox.showinfo("Success", "Marked as collected")
@@ -136,173 +224,41 @@ class SendingPage:
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
-        ctk.CTkButton(dialog, text="Save", command=save).pack(pady=15)
-        # Table
-        self.tree = ttk.Treeview(
-            self.frame,
-            columns=("Product", "Customer", "Contact", "Description"),
-            show="headings"
-        )
-
-        for col in ("Product", "Customer", "Contact", "Description"):
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=150)
-
-        self.tree.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # ===== SEARCH BAR =====
-        search_frame = ctk.CTkFrame(self.frame)
-        search_frame.pack(fill="x", padx=10, pady=(0, 5))
-
-        self.search_var = ctk.StringVar()
-
-        search_entry = ctk.CTkEntry(
-            search_frame,
-            textvariable=self.search_var,
-            placeholder_text="🔍 Search dispatch (product, customer...)"
-        )
-        search_entry.pack(fill="x", padx=5)
-
-        search_entry.bind("<KeyRelease>", self.filter_table)
-
-    def dispatch(self):
-        try:
-            product = next(p for p in self.products if p["name"] == self.product_var.get())
-
-            customer_name = self.customer_name_entry.get().strip()
-            if not customer_name:
-                raise ValueError("Customer name is required")
-
-            contact = self.contact_entry.get().strip()
-            if not contact:
-                raise ValueError("Customer contact is required")
-
-            Validators.validate_phone(contact)
-
-            self.sending_service.create_dispatch(
-                self.user["id"],
-                product["id"],
-                customer_name,
-                contact,
-                self.desc_entry.get().strip()
-            )
-
-            messagebox.showinfo("Success", "Dispatch recorded")
-
-            # Clear inputs
-            self.customer_name_entry.delete(0, "end")
-            self.contact_entry.delete(0, "end")
-            self.desc_entry.delete(0, "end")
-
-            self.load_table()
-
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
-
-    def load_table(self):
-        self.all_data = self.sending_service.get_all()
-        self.display_table(self.all_data)
-
-        for row in self.tree.get_children():
-            self.tree.delete(row)
-
-        data = self.sending_service.get_all()
-
-        for row in data:
-            product = self.db.fetch_one(
-                "SELECT name FROM products WHERE id=%s",
-                (row["product_id"],)
-            )
-            product_name = product["name"] if product else "Unknown"
-
-            self.tree.insert("", "end", values=(
-                product_name,
-                row["customer_name"],
-                row["customer_contact"],
-                row["description"]
-            ))
-    def display_table(self, data):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
-
-        for row in data:
-            product = self.db.fetch_one(
-                "SELECT name FROM products WHERE id=%s",
-                (row["product_id"],)
-            )
-            product_name = product["name"] if product else "Unknown"
-
-            self.tree.insert("", "end", values=(
-                product_name,
-                row["customer_name"],
-                row["customer_contact"],
-                row["description"]
-            ))
-
-
-    def filter_table(self, event=None):
-        keyword = self.search_var.get().lower()
-
-        filtered = []
-        for row in self.all_data:
-            product = self.db.fetch_one(
-                "SELECT name FROM products WHERE id=%s",
-                (row["product_id"],)
-            )
-            name = product["name"] if product else ""
-
-            if (
-                keyword in name.lower()
-                or keyword in row["customer_name"].lower()
-                or keyword in row["customer_contact"].lower()
-                or keyword in (row["description"] or "").lower()
-            ):
-                filtered.append(row)
-
-        self.display_table(filtered)
+        ctk.CTkButton(dialog, text="Save", command=save).pack(pady=10)
 
     # ==============================
-    # 📤 EXPORT TO EXCEL
+    # EXPORT
     # ==============================
     def export_to_excel(self):
         try:
             data = self.sending_service.get_all()
 
             if not data:
-                messagebox.showwarning("No Data", "No sending data to export")
+                messagebox.showwarning("No Data", "No data to export")
                 return
 
-            formatted_data = []
+            formatted = []
 
             for row in data:
                 product = self.db.fetch_one(
                     "SELECT name FROM products WHERE id=%s",
                     (row["product_id"],)
                 )
-                product_name = product["name"] if product else "Unknown"
 
-                formatted_data.append({
-                    "Product": product_name,
+                formatted.append({
+                    "Product": product["name"] if product else "Unknown",
                     "Customer": row["customer_name"],
                     "Contact": row["customer_contact"],
                     "Description": row["description"]
                 })
 
-            df = pd.DataFrame(formatted_data)
+            df = pd.DataFrame(formatted)
 
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                title="Save Excel File"
-            )
+            file_path = filedialog.asksaveasfilename(defaultextension=".xlsx")
 
-            if not file_path:
-                return
-
-            df.to_excel(file_path, index=False)
-
-            messagebox.showinfo("Success", "Sending data exported successfully")
+            if file_path:
+                df.to_excel(file_path, index=False)
+                messagebox.showinfo("Success", "Exported")
 
         except Exception as e:
-            messagebox.showerror("Export Error", str(e))
-
+            messagebox.showerror("Error", str(e))

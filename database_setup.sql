@@ -140,6 +140,26 @@ CREATE TABLE IF NOT EXISTS sending (
         REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE collected (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sending_id INT,
+    product_id INT NOT NULL,
+    customer_name VARCHAR(255) NOT NULL,
+    customer_contact VARCHAR(20) NOT NULL,
+    description TEXT,
+    collected_by_name VARCHAR(255) NOT NULL,
+    collected_by_phone VARCHAR(20) NOT NULL,
+    status VARCHAR(50) DEFAULT 'collected',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_collected_sending
+        FOREIGN KEY (sending_id)
+        REFERENCES sending(id)
+        ON DELETE SET NULL,
+    CONSTRAINT fk_collected_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE CASCADE
+);
 -- ========================================
 -- 7. LOGS TABLE
 -- ========================================

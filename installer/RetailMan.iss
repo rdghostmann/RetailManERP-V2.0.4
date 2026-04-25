@@ -51,7 +51,7 @@ begin
       'DB_USER=root'#13#10 +
       'DB_PORT=3306'#13#10 +
       'DB_PASSWORD=Password@123'#13#10 +
-      'DB_NAME=retailman_man_db',
+      'DB_NAME=retail_man_db',
       False
     );
   end;

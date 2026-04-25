@@ -31,7 +31,7 @@ class LogsPage:
         header = ctk.CTkLabel(
             self.frame,
             text="Compliance Logs (Audit Trail)",
-            font=("Arial", 18)
+            font=("Arial", 16)
         )
         header.pack(pady=10)
 

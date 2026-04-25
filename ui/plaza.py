@@ -42,8 +42,8 @@ class PlazaPage:
     def build_ui(self):
         ctk.CTkLabel(
             self.frame,
-            text="Plaza - Record Sales",
-            font=("Arial", 18)
+            text="Plaza - Entry",
+            font=("Arial", 16)
         ).pack(pady=10)
 
         form = ctk.CTkFrame(self.frame)
@@ -81,6 +81,13 @@ class PlazaPage:
             command=self.export_to_excel
         ).pack(side="left", padx=5)
 
+        ctk.CTkButton(
+            form,
+            text="Mark as Sale",
+            fg_color="#2563EB",
+            command=self.mark_sale
+        ).pack(side="left", padx=5)
+
         # ===== SEARCH =====
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
@@ -98,8 +105,7 @@ class PlazaPage:
         # ===== TABLE =====
         self.tree = ttk.Treeview(
             self.frame,
-            columns=("Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"),
-            show="headings"
+            columns=("ID", "Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date")            show="headings"
         )
 
         # ===== TABLE =====
@@ -118,11 +124,11 @@ class PlazaPage:
 
         self.tree = ttk.Treeview(
             self.frame,
-            columns=("Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"),
+            columns=("ID", "Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"),
             show="headings"
         )
 
-        for col in ("Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"):
+        for col in ("ID", "Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"):
             self.tree.heading(col, text=col, anchor="center")   # ✅ Center header
             self.tree.column(col, width=130, anchor="center")   # ✅ Center cell content
 
@@ -160,6 +166,7 @@ class PlazaPage:
 
         for row in data:
             self.tree.insert("", "end", values=(
+                row["id"],
                 self.product_cache.get(row["product_id"], "Unknown"),
                 row["imei"],
                 row["colour"],
@@ -309,3 +316,26 @@ class PlazaPage:
 
         except Exception as e:
             messagebox.showerror("Export Error", str(e))
+
+
+    def mark_sale(self):
+        selected = self.tree.selection()
+
+        if not selected:
+            messagebox.showwarning("Select", "Select a record")
+            return
+
+        values = self.tree.item(selected[0])["values"]
+
+        # ⚠️ Ensure ID exists in table (you may need to add it)
+        plaza_id = values[0]
+
+        try:
+            self.plaza_service.mark_as_sale(self.user["id"], plaza_id)
+
+            messagebox.showinfo("Success", "Marked as completed sale")
+
+            self.load_table()
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))

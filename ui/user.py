@@ -44,7 +44,7 @@ class UserPage:
         ctk.CTkLabel(
             self.frame,
             text="User Management",
-            font=("Arial", 18)
+            font=("Arial", 16)
         ).pack(pady=10)
 
         # ===== FORM =====

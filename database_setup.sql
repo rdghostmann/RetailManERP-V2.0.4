@@ -90,6 +90,18 @@ CREATE TABLE IF NOT EXISTS plaza (
         REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE premises_sales (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    imei VARCHAR(50),
+    colour VARCHAR(50),
+    quantity INT,
+    customer_name VARCHAR(100),
+    customer_phone VARCHAR(20),
+    sold_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ========================================
 -- 5. RETURNS TABLE
 -- ========================================

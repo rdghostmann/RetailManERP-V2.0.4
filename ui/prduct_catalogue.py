@@ -29,7 +29,7 @@ class ProductCataloguePage:
         ctk.CTkLabel(
             self.frame,
             text="Product Catalogue",
-            font=("Arial", 18)
+            font=("Arial", 16)
         ).pack(pady=10)
 
         # ===== FORM =====

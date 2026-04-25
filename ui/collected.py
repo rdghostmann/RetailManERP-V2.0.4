@@ -22,7 +22,7 @@ class CollectedPage:
         ctk.CTkLabel(
             self.frame,
             text="Collected Devices",
-            font=("Arial", 18)
+            font=("Arial", 16)
         ).pack(pady=10)
 
         # ===== TOP BAR =====

@@ -40,7 +40,7 @@ class SendingPage:
         ctk.CTkLabel(
             self.frame,
             text="Dispatch Management",
-            font=("Arial", 18)
+            font=("Arial", 16)
         ).pack(pady=10)
 
         form = ctk.CTkFrame(self.frame)

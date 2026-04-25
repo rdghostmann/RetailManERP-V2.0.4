@@ -24,6 +24,8 @@ from ui.plaza import PlazaPage
 from ui.returns import ReturnsPage
 from ui.sending import SendingPage
 from ui.user import UserPage
+from ui.profile import ProfilePage
+from ui.premises import PremisesPage
 
 from PIL import Image
 
@@ -81,8 +83,10 @@ class Dashboard:
             "logout": ctk.CTkImage(Image.open(resource_path("public/check-out.png")), size=(20, 20)),
             "moon": ctk.CTkImage(Image.open(resource_path("public/moon.png")), size=(20, 20)),
             "light": ctk.CTkImage(Image.open(resource_path("public/light.png")), size=(20, 20)),
+            "premises": ctk.CTkImage(Image.open(resource_path("public/premises.png")), size=(20, 20)),
             "collected": ctk.CTkImage(Image.open(resource_path("public/collected.png")), size=(20, 20)),
-
+            "profile": ctk.CTkImage(Image.open(resource_path("public/profile.png")), size=(20, 20)
+),
             # KPI ICONS
             "total-stock": ctk.CTkImage(Image.open(resource_path("public/total-stock.png")), size=(28, 28)),
             "sales": ctk.CTkImage(Image.open(resource_path("public/sales.png")), size=(28, 28)),
@@ -154,37 +158,118 @@ class Dashboard:
         header.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkLabel(header, text="RetailMan", font=("Arial", 18)).pack()
-        ctk.CTkLabel(header, text=f"Role: {self.user['role'].title()}", font=("Arial", 10), text_color="gray").pack()
+        ctk.CTkLabel(
+            header,
+            text=f"Role: {self.user['role'].title()}",
+            font=("Arial", 10),
+            text_color="gray"
+        ).pack()
 
-        self.create_sidebar_button("Dashboard", self.icons["dashboard"], self.show_dashboard, "dashboard").pack(fill="x", padx=10, pady=5)
-       
+        # ======================
+        # NAVIGATION BUTTONS
+        # ======================
+
+        self.create_sidebar_button(
+            "Dashboard",
+            self.icons["dashboard"],
+            self.show_dashboard,
+            "dashboard"
+        ).pack(fill="x", padx=10, pady=5)
+
         if self.user["role"] == "admin":
-            self.create_sidebar_button("Users", self.icons["users"], self.open_users, "users").pack(fill="x", padx=10, pady=5)
-        
-        self.create_sidebar_button("Products", self.icons["products"], self.product_catalogue, "products").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("Stock", self.icons["stock"], self.open_stock, "stock").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("Plaza", self.icons["plaza"], self.open_plaza, "plaza").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("Returns", self.icons["returns"], self.open_returns, "returns").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("Sending", self.icons["sending"], self.open_sending, "sending").pack(fill="x", padx=10, pady=5)
-        self.create_sidebar_button("Collected",self.icons["collected"], self.open_collected, "collected").pack(fill="x", padx=10, pady=5)
+            self.create_sidebar_button(
+                "Users",
+                self.icons["users"],
+                self.open_users,
+                "users"
+            ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Products",
+            self.icons["products"],
+            self.product_catalogue,
+            "products"
+        ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Stock",
+            self.icons["stock"],
+            self.open_stock,
+            "stock"
+        ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Plaza",
+            self.icons["plaza"],
+            self.open_plaza,
+            "plaza"
+        ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Plaza Sales",
+            self.icons["sales"],  # reuse icon
+            self.open_plaza_sales,
+            "plaza_sales"
+        ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Premises Sales",
+            self.icons["premises"],
+            self.open_premises,
+            "premises"
+        ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Returns",
+            self.icons["returns"],
+            self.open_returns,
+            "returns"
+        ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Sending",
+            self.icons["sending"],
+            self.open_sending,
+            "sending"
+        ).pack(fill="x", padx=10, pady=5)
+
+        self.create_sidebar_button(
+            "Collected",
+            self.icons["collected"],
+            self.open_collected,
+            "collected"
+        ).pack(fill="x", padx=10, pady=5)
+
+        # ======================
+        # 🔐 PROFILE (NEW)
+        # ======================
+        self.create_sidebar_button(
+            "Profile",
+            self.icons["profile"],
+            self.open_profile,
+            "profile"
+        ).pack(fill="x", padx=10, pady=5)
 
         if self.user["role"] == "admin":
-            self.create_sidebar_button("Logs", self.icons["logs"], self.open_logs, "logs").pack(fill="x", padx=10, pady=5)
+            self.create_sidebar_button(
+                "Logs",
+                self.icons["logs"],
+                self.open_logs,
+                "logs"
+            ).pack(fill="x", padx=10, pady=5)
 
-        current_theme_is_dark = theme_manager.is_dark()
-
-        theme_icon = self.icons["light"] if current_theme_is_dark else self.icons["moon"]
-        theme_text = "Light Theme" if current_theme_is_dark else "Dark Theme"
-
-    
-
-        ctk.CTkButton(self.sidebar, text="  Logout",
-                image=self.icons["logout"],
-                compound="left",
-                fg_color="red",
-                hover_color="#B91C1C",
-                command=self.logout
-            ).pack(fill="x", padx=10, pady=20)
+        # ======================
+        # LOGOUT
+        # ======================
+        ctk.CTkButton(
+            self.sidebar,
+            text="  Logout",
+            image=self.icons["logout"],
+            compound="left",
+            fg_color="red",
+            hover_color="#B91C1C",
+            command=self.logout
+        ).pack(fill="x", padx=10, pady=20)
     # ==============================
     # 🏠 DASHBOARD VIEW
     # ==============================
@@ -428,12 +513,27 @@ class Dashboard:
         self.clear_content()
         ProductCataloguePage(self.content, self.db, self.user)
 
+    def open_premises(self):
+        self.set_active_tab("premises", lambda: None)
+        self.clear_content()
+        PremisesPage(self.content, self.db, self.user)
+
     def toggle_theme(self):
         theme_manager.toggle_theme()
         # ctk.set_appearance_mode("dark" if theme_manager.is_dark() else "light")
         ctk.set_appearance_mode("dark")  # 🔒 Force dark mode
         self.refresh_sidebar()
 
+    def open_plaza_sales(self):
+        self.set_active_tab("plaza_sales", lambda: None)
+        self.clear_content()
+        from ui.plaza_sale import PlazaSalesPage
+        PlazaSalesPage(self.content, self.db, self.user)
+        
+    def open_profile(self):
+        self.set_active_tab("profile", lambda: None)
+        self.clear_content()
+        ProfilePage(self.content, self.db, self.user)
     def logout(self):
         self.root.destroy()
         

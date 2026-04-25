@@ -72,23 +72,7 @@ class PlazaService:
                 )
             )
 
-            # =========================
-            # 🔥 2. DEDUCT STOCK
-            # =========================
-            new_qty = colour_stock["quantity"] - quantity
-
-            if new_qty > 0:
-                self.db.execute(
-                    "UPDATE stock SET quantity=%s WHERE id=%s",
-                    (new_qty, colour_stock["id"])
-                )
-            else:
-                # remove row when zero
-                self.db.execute(
-                    "DELETE FROM stock WHERE id=%s",
-                    (colour_stock["id"],)
-                )
-
+    
             # =========================
             # 🔥 3. FETCH LAST RECORD
             # =========================
@@ -105,6 +89,66 @@ class PlazaService:
 
         except Exception as e:
             raise e
+
+    def mark_as_sale(self, user_id: int, plaza_id: int):
+        record = self.db.fetch_one(
+            "SELECT * FROM plaza WHERE id=%s",
+            (plaza_id,)
+        )
+
+        if not record:
+            raise ValueError("Sale record not found")
+
+        # get stock
+        stock = self.db.fetch_one(
+            "SELECT id, quantity FROM stock WHERE imei=%s AND colour=%s",
+            (record["imei"], record["colour"])
+        )
+
+        if not stock:
+            raise ValueError("Stock not found")
+
+        if stock["quantity"] < record["quantity"]:
+            raise ValueError("Insufficient stock")
+
+        try:
+            # ✅ INSERT INTO plaza_sales (NEW TABLE)
+            self.db.execute(
+                """
+                INSERT INTO plaza_sales (
+                    plaza_id, product_id, imei, colour, quantity, sold_by
+                )
+                VALUES (%s,%s,%s,%s,%s,%s)
+                """,
+                (
+                    plaza_id,
+                    record["product_id"],
+                    record["imei"],
+                    record["colour"],
+                    record["quantity"],
+                    user_id
+                )
+            )
+
+            # ✅ UPDATE STOCK
+            new_qty = stock["quantity"] - record["quantity"]
+
+            if new_qty > 0:
+                self.db.execute(
+                    "UPDATE stock SET quantity=%s WHERE id=%s",
+                    (new_qty, stock["id"])
+                )
+            else:
+                self.db.execute(
+                    "DELETE FROM stock WHERE id=%s",
+                    (stock["id"],)
+                )
+
+            self.logger.log(user_id, "SALE", "plaza_sales", plaza_id)
+
+        except Exception as e:
+            raise e
+
 
     # =========================
     # 📊 FETCH ALL SALES

@@ -20,7 +20,7 @@ class LoginWindow:
         return value.isdigit() and len(value) <= 11 or value == ""
         
     def build_ui(self):
-        ctk.CTkLabel(self.root, text="RetailMan V1.2", font=("Arial", 20)).pack(pady=20)
+        ctk.CTkLabel(self.root, text="RetailMan V1.2", font=("Arial", 12)).pack(pady=20)
 
         self.name_entry = ctk.CTkEntry(self.root, placeholder_text="Name")
         self.name_entry.pack(pady=10)

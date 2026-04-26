@@ -27,7 +27,7 @@ class ProfilePage:
         ctk.CTkLabel(
             self.frame,
             text="Admin Settings / Profile",
-            font=("Arial", 20, "bold")
+            font=("Arial", 12, "bold")
         ).pack(pady=15)
 
         # =========================

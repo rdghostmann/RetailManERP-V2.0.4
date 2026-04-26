@@ -13,10 +13,10 @@ from ui.prduct_catalogue import ProductCataloguePage
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from services.stock_service import StockService
-from services.plaza_services import PlazaService
+from services.plaza_service import PlazaService
 from services.sending_services import SendingService
 from services.returns_services import ReturnsService
-from app.config import InventoryConfig, UIConfig
+from app.config import UIConfig
 from utils.theme_manager import theme_manager
 
 from ui.stock import StockPage
@@ -26,6 +26,7 @@ from ui.sending import SendingPage
 from ui.user import UserPage
 from ui.profile import ProfilePage
 from ui.premises import PremisesPage
+from ui.plaza_sale import PlazaSalePage
 
 from PIL import Image
 
@@ -157,7 +158,7 @@ class Dashboard:
         header = ctk.CTkFrame(self.sidebar)
         header.pack(fill="x", padx=10, pady=10)
 
-        ctk.CTkLabel(header, text="RetailMan", font=("Arial", 18)).pack()
+        ctk.CTkLabel(header, text="RetailMan", font=("Arial", 12)).pack()
         ctk.CTkLabel(
             header,
             text=f"Role: {self.user['role'].title()}",
@@ -280,7 +281,7 @@ class Dashboard:
         ctk.CTkLabel(
             self.content,
             text=f"Welcome, {self.user['name']} ({self.user['role'].title()})",
-            font=("Arial", 20)
+            font=("Arial", 12)
         ).pack(pady=10)
 
         # KPI
@@ -300,7 +301,7 @@ class Dashboard:
         ctk.CTkLabel(
             self.alert_frame,
             text="🚨 Low Stock Alert (Qty < 5)",
-            font=("Arial", 16),
+            font=("Arial", 12),
             text_color="#F87171"
         ).pack(anchor="w", padx=10)
 
@@ -325,7 +326,7 @@ class Dashboard:
         ctk.CTkLabel(
             self.inventory_frame,
             text="📦 Inventory Overview",
-            font=("Arial", 16)
+            font=("Arial", 12)
         ).pack(anchor="w", padx=10)
 
         table_container = ctk.CTkFrame(self.inventory_frame)
@@ -527,9 +528,8 @@ class Dashboard:
     def open_plaza_sales(self):
         self.set_active_tab("plaza_sales", lambda: None)
         self.clear_content()
-        from ui.plaza_sale import PlazaSalesPage
-        PlazaSalesPage(self.content, self.db, self.user)
-        
+        PlazaSalePage(self.content, self.db, self.user)
+
     def open_profile(self):
         self.set_active_tab("profile", lambda: None)
         self.clear_content()

@@ -1,13 +1,13 @@
 # ui/plaza.py
 import customtkinter as ctk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox
 import pandas as pd
-from datetime import datetime
-from services.plaza_services import PlazaService
+from services.plaza_service import PlazaService
 from services.product_service import ProductService
 from utils.validators import Validators
 from PIL import Image
 from utils.resource_path import resource_path
+from utils.excel_exporter import ExcelExporter
 
 
 class PlazaPage:
@@ -43,7 +43,7 @@ class PlazaPage:
         ctk.CTkLabel(
             self.frame,
             text="Plaza - Entry",
-            font=("Arial", 16)
+            font=("Arial", 12)
         ).pack(pady=10)
 
         form = ctk.CTkFrame(self.frame)
@@ -68,12 +68,12 @@ class PlazaPage:
         self.customer_phone = ctk.CTkEntry(form, placeholder_text="Phone")
         self.customer_phone.pack(side="left", padx=5)
 
-        ctk.CTkButton(form, text="Record Sale", command=self.record_sale)\
+        ctk.CTkButton(form, text="Record Entry", command=self.record_sale)\
             .pack(side="left", padx=5)
 
         ctk.CTkButton(
             form,
-            text=" Export Excel",
+            text="Export Excel",
             image=self.export_icon,
             compound="left",
             fg_color="#16A34A",
@@ -88,7 +88,7 @@ class PlazaPage:
             command=self.mark_sale
         ).pack(side="left", padx=5)
 
-        # ===== SEARCH =====
+        # ================= SEARCH =================
         search_frame = ctk.CTkFrame(self.frame)
         search_frame.pack(fill="x", padx=10, pady=(0, 5))
 
@@ -97,40 +97,38 @@ class PlazaPage:
         search_entry = ctk.CTkEntry(
             search_frame,
             textvariable=self.search_var,
-            placeholder_text="🔍 Search sales (product, IMEI, customer...)"
+            placeholder_text="🔍 Search..."
         )
         search_entry.pack(fill="x", padx=5)
         search_entry.bind("<KeyRelease>", self.filter_table)
 
-        # ===== TABLE =====
-        self.tree = ttk.Treeview(
-            self.frame,
-            columns=("ID", "Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date")            show="headings"
-        )
-
-        # ===== TABLE =====
+        # ================= TABLE STYLE =================
         style = ttk.Style()
-        style.configure(
-            "Treeview",
-            rowheight=28,
-            font=("Arial", 12)
-        )
+        style.configure("Treeview", rowheight=28, font=("Arial", 12))
+        style.configure("Treeview.Heading", font=("Arial", 12, "bold"))
 
-        style.configure(
-            "Treeview.Heading",
-            font=("Arial", 12, "bold"),
-            anchor="center"
+        # ================= TABLE (UPDATED) =================
+        columns = (
+            "BatchNo",
+            "ID",
+            "Product",
+            "IMEI",
+            "Colour",
+            "Qty",
+            "Customer",
+            "Phone",
+            "Date"
         )
 
         self.tree = ttk.Treeview(
             self.frame,
-            columns=("ID", "Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"),
+            columns=columns,
             show="headings"
         )
 
-        for col in ("ID", "Product", "IMEI", "Colour", "Qty", "Customer", "Phone", "Date"):
-            self.tree.heading(col, text=col, anchor="center")   # ✅ Center header
-            self.tree.column(col, width=130, anchor="center")   # ✅ Center cell content
+        for col in columns:
+            self.tree.heading(col, text=col, anchor="center")
+            self.tree.column(col, width=120, anchor="center")
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -139,17 +137,6 @@ class PlazaPage:
     # =========================
     def load_table(self):
         self.all_data = self.plaza_service.get_all() or []
-
-        # Cache product names
-        product_ids = {row["product_id"] for row in self.all_data}
-
-        for pid in product_ids:
-            if pid not in self.product_cache:
-                product = self.db.fetch_one(
-                    "SELECT name FROM products WHERE id=%s",
-                    (pid,)
-                )
-                self.product_cache[pid] = product["name"] if product else "Unknown"
 
         self.display_table(self.all_data)
 
@@ -161,21 +148,28 @@ class PlazaPage:
         except:
             return str(dt)
 
+    # =========================
+    # DISPLAY (UPDATED)
+    # =========================
     def display_table(self, data):
         self.tree.delete(*self.tree.get_children())
 
         for row in data:
             self.tree.insert("", "end", values=(
-                row["id"],
-                self.product_cache.get(row["product_id"], "Unknown"),
-                row["imei"],
-                row["colour"],
-                row["quantity"],
-                row["customer_name"],
-                row["customer_phone"],
+                row.get("batch_no", "-"),
+                row.get("id"),
+                row.get("product_name", "Unknown"),
+                row.get("imei"),
+                row.get("colour"),
+                row.get("quantity"),
+                row.get("customer_name"),
+                row.get("customer_phone"),
                 self.format_date(row.get("created_at"))
             ))
 
+    # =========================
+    # FILTER
+    # =========================
     def filter_table(self, event=None):
         keyword = self.search_var.get().lower().strip()
 
@@ -185,16 +179,16 @@ class PlazaPage:
 
         filtered = [
             row for row in self.all_data
-            if keyword in self.product_cache.get(row["product_id"], "").lower()
-            or keyword in str(row["imei"]).lower()
-            or keyword in str(row["customer_name"]).lower()
-            or keyword in str(row["customer_phone"]).lower()
+            if keyword in str(row.get("batch_no", "")).lower()
+            or keyword in str(row.get("imei", "")).lower()
+            or keyword in str(row.get("customer_name", "")).lower()
+            or keyword in str(row.get("customer_phone", "")).lower()
         ]
 
         self.display_table(filtered)
 
     # =========================
-    # BUSINESS LOGIC
+    # BUSINESS LOGIC (UNCHANGED)
     # =========================
     def lookup_product(self):
         imei = self.imei_entry.get().strip()
@@ -210,7 +204,6 @@ class PlazaPage:
                 self.product_info_label.configure(text="IMEI not found", text_color="red")
                 return
 
-            # ✅ FIX: fetch colour using product_id (NOT imei)
             stock_records = self.db.fetch_all(
                 "SELECT colour FROM stock WHERE product_id=%s AND quantity > 0",
                 (product["id"],)
@@ -218,15 +211,12 @@ class PlazaPage:
 
             colours = list({s["colour"] for s in stock_records})
 
-            if not colours:
-                self.product_info_label.configure(text="No stock available", text_color="red")
-                return
-
             self.fetched_product = product
             self.available_colours = colours
 
             self.colour_dropdown.configure(values=colours)
-            self.colour_var.set(colours[0])
+            if colours:
+                self.colour_var.set(colours[0])
 
             self.product_info_label.configure(
                 text=f"{product['name']} ({product['brand']})",
@@ -248,13 +238,7 @@ class PlazaPage:
             if not self.fetched_product:
                 raise ValueError("Invalid IMEI")
 
-            name = self.customer_name.get().strip()
-            phone = self.customer_phone.get().strip()
-
-            if not name:
-                raise ValueError("Customer name required")
-
-            Validators.validate_phone(phone)
+            Validators.validate_phone(self.customer_phone.get().strip())
 
             self.plaza_service.record_sale(
                 self.user["id"],
@@ -262,11 +246,11 @@ class PlazaPage:
                 self.imei_entry.get().strip(),
                 self.colour_var.get(),
                 self.quantity,
-                name,
-                phone
+                self.customer_name.get().strip(),
+                self.customer_phone.get().strip()
             )
 
-            messagebox.showinfo("Success", "Sale recorded")
+            messagebox.showinfo("Success", "Entry recorded")
 
             self.imei_entry.delete(0, "end")
             self.customer_name.delete(0, "end")
@@ -278,46 +262,6 @@ class PlazaPage:
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-    # =========================
-    # EXPORT
-    # =========================
-    def export_to_excel(self):
-        try:
-            if not self.all_data:
-                messagebox.showwarning("No Data", "No sales data to export")
-                return
-
-            formatted_data = [
-                {
-                    "Product": self.product_cache.get(row["product_id"], "Unknown"),
-                    "IMEI": row["imei"],
-                    "Colour": row["colour"],
-                    "Quantity": row["quantity"],
-                    "Customer": row["customer_name"],
-                    "Phone": row["customer_phone"],
-                    "Date": self.format_date(row.get("created_at"))
-                }
-                for row in self.all_data
-            ]
-
-            df = pd.DataFrame(formatted_data)
-
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")]
-            )
-
-            if not file_path:
-                return
-
-            df.to_excel(file_path, index=False)
-
-            messagebox.showinfo("Success", "Sales exported successfully")
-
-        except Exception as e:
-            messagebox.showerror("Export Error", str(e))
-
-
     def mark_sale(self):
         selected = self.tree.selection()
 
@@ -326,16 +270,45 @@ class PlazaPage:
             return
 
         values = self.tree.item(selected[0])["values"]
-
-        # ⚠️ Ensure ID exists in table (you may need to add it)
-        plaza_id = values[0]
+        plaza_id = values[1]  # ID shifted because BatchNo added
 
         try:
             self.plaza_service.mark_as_sale(self.user["id"], plaza_id)
 
             messagebox.showinfo("Success", "Marked as completed sale")
-
             self.load_table()
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
+
+    # =========================
+    # EXPORT (UPDATED)
+    # =========================
+    def export_to_excel(self):
+        try:
+            if not self.all_data:
+                messagebox.showwarning("No Data", "No sales data available")
+                return
+
+            df = pd.DataFrame([
+                {
+                    "BatchNo": row.get("batch_no"),
+                    "ID": row.get("id"),
+                    "Product": row.get("product_name"),
+                    "IMEI": row.get("imei"),
+                    "Colour": row.get("colour"),
+                    "Quantity": row.get("quantity"),
+                    "Customer": row.get("customer_name"),
+                    "Phone": row.get("customer_phone"),
+                    "Date": self.format_date(row.get("created_at"))
+                }
+                for row in self.all_data
+            ])
+
+            exporter = ExcelExporter("RetailMan_Reports.xlsx")
+            exporter.export_sheet("Plaza-Entry", df)
+
+            messagebox.showinfo("Export Successful", "Plaza-Entry updated")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", str(e))

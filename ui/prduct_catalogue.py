@@ -2,7 +2,8 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import pandas as pd
-
+from utils.excel_exporter import ExcelExporter
+from tkinter import messagebox
 
 class ProductCataloguePage:
     def __init__(self, root, db, current_user):
@@ -29,7 +30,7 @@ class ProductCataloguePage:
         ctk.CTkLabel(
             self.frame,
             text="Product Catalogue",
-            font=("Arial", 16)
+            font=("Arial", 12)
         ).pack(pady=10)
 
         # ===== FORM =====
@@ -345,25 +346,29 @@ class ProductCataloguePage:
     # =========================
     def export_to_excel(self):
         try:
-            data = self.filtered_products or self.all_products
-
-            if not data:
-                messagebox.showwarning("No Data", "No products to export")
+            if not self.all_data:
+                messagebox.showwarning("No Data", "No sales data available")
                 return
 
-            df = pd.DataFrame(data)
+            df = pd.DataFrame([
+                {
+                    "Product": row.get("product_name"),
+                    "IMEI": row.get("imei"),
+                    "Colour": row.get("colour"),
+                    "Quantity": row.get("quantity"),
+                    "Sold By": row.get("sold_by"),
+                    "Date": self.format_date(row.get("created_at"))
+                }
+                for row in self.all_data
+            ])
 
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")]
+            exporter = ExcelExporter("RetailMan_Reports.xlsx")
+            exporter.export_sheet("ProductCatalog", df)
+
+            messagebox.showinfo(
+                "Export Successful",
+                "ProductCatalog sheet updated in RetailMan_Reports.xlsx"
             )
 
-            if not file_path:
-                return
-
-            df.to_excel(file_path, index=False)
-
-            messagebox.showinfo("Success", "Exported successfully")
-
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Export Error", str(e))

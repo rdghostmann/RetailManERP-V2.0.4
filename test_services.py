@@ -7,7 +7,7 @@ from models.db import db
 from services.auth_service import AuthService
 from services.product_service import ProductService
 from services.stock_service import StockService
-from services.plaza_services import PlazaService
+from services.plaza_service import PlazaService
 from services.returns_services import ReturnsService
 from services.sending_services import SendingService
 

@@ -8,6 +8,8 @@ import pandas as pd
 from PIL import Image
 from utils.resource_path import resource_path
 from datetime import datetime
+from utils.excel_exporter import ExcelExporter
+from tkinter import messagebox
 
 class StockPage:
 
@@ -48,7 +50,7 @@ class StockPage:
         ctk.CTkLabel(
             self.frame,
             text="Stock Management",
-            font=("Arial", 16)
+            font=("Arial", 12)
         ).pack(pady=10)
 
         # ===== FORM =====
@@ -235,25 +237,29 @@ class StockPage:
 
     def export_to_excel(self):
         try:
-            data = self.filtered_stock or self.all_stock
-
-            if not data:
-                messagebox.showwarning("No Data", "No stock data")
+            if not self.all_data:
+                messagebox.showwarning("No Data", "No sales data available")
                 return
 
-            df = pd.DataFrame(data)
+            df = pd.DataFrame([
+                {
+                    "Product": row.get("product_name"),
+                    "IMEI": row.get("imei"),
+                    "Colour": row.get("colour"),
+                    "Quantity": row.get("quantity"),
+                    "Sold By": row.get("sold_by"),
+                    "Date": self.format_date(row.get("created_at"))
+                }
+                for row in self.all_data
+            ])
 
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")]
+            exporter = ExcelExporter("RetailMan_Reports.xlsx")
+            exporter.export_sheet("Stock", df)
+
+            messagebox.showinfo(
+                "Export Successful",
+                "Stock sheet updated in RetailMan_Reports.xlsx"
             )
-
-            if not file_path:
-                return
-
-            df.to_excel(file_path, index=False)
-
-            messagebox.showinfo("Success", "Exported")
 
         except Exception as e:
             messagebox.showerror("Export Error", str(e))

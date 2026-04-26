@@ -1,168 +1,137 @@
-# services/plaza_services.py
-from services.log_service import LogService
-from utils.validators import Validators
+#ui/plaza_sale.py
+import customtkinter as ctk
+from tkinter import ttk, messagebox
+import pandas as pd
+from utils.excel_exporter import ExcelExporter
+from services.plaza_service import PlazaService
 
 
-class PlazaService:
-    def __init__(self, db):
+class PlazaSalePage:
+    def __init__(self, root, db, user):
+        self.root = root
         self.db = db
-        self.logger = LogService(db)
+        self.user = user
 
-    def record_sale(
-        self,
-        user_id: int,
-        product_id: int,
-        imei: str,
-        colour: str,
-        quantity: int,
-        customer_name: str,
-        customer_phone: str
-    ):
-        # =========================
-        # ✅ VALIDATION
-        # =========================
-        Validators.validate_required(product_id, "Product is required")
-        Validators.validate_imei(imei)
-        Validators.validate_quantity(quantity)
-        Validators.validate_required(customer_name, "Customer name required")
-        Validators.validate_phone(customer_phone)
+        self.service = PlazaService(db)
+        self.all_data = []
 
-        # =========================
-        # 🔎 CHECK STOCK EXISTS
-        # =========================
-        stock = self.db.fetch_one(
-            "SELECT id FROM stock WHERE imei=%s",
-            (imei,)
+        self.frame = ctk.CTkFrame(root)
+        self.frame.pack(fill="both", expand=True)
+
+        self.build_ui()
+        self.load_table()
+
+    def build_ui(self):
+
+        ctk.CTkLabel(
+            self.frame,
+            text="Plaza Sales (Finalized)",
+            font=("Arial", 14, "bold")
+        ).pack(pady=10)
+
+        top = ctk.CTkFrame(self.frame)
+        top.pack(fill="x", padx=10)
+
+        self.search_var = ctk.StringVar()
+
+        entry = ctk.CTkEntry(
+            top,
+            textvariable=self.search_var,
+            placeholder_text="Search..."
+        )
+        entry.pack(side="left", fill="x", expand=True)
+        entry.bind("<KeyRelease>", self.filter_table)
+
+        ctk.CTkButton(
+            top,
+            text="Export Excel",
+            fg_color="#16A34A",
+            command=self.export_to_excel
+        ).pack(side="left", padx=5)
+
+        # TABLE
+        columns = ("BatchNo","Product","IMEI","Colour","Qty","Sold By","Date")
+
+        self.tree = ttk.Treeview(
+            self.frame,
+            columns=columns,
+            show="headings"
         )
 
-        if not stock:
-            raise ValueError("IMEI not found in stock")
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, anchor="center", width=130)
 
-        # =========================
-        # 🔎 GET SPECIFIC COLOUR STOCK
-        # =========================
-        colour_stock = self.db.fetch_one(
-            "SELECT id, quantity FROM stock WHERE imei=%s AND colour=%s",
-            (imei, colour)
-        )
+        self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        if not colour_stock:
-            raise ValueError(f"Colour '{colour}' not found in stock")
+        self.status = ctk.CTkLabel(self.frame, text="Loading...", text_color="gray")
+        self.status.pack()
 
-        if colour_stock["quantity"] < quantity:
-            raise ValueError(f"Insufficient stock for colour '{colour}'")
-
+    def load_table(self):
         try:
-            # =========================
-            # 🔥 1. INSERT SALE RECORD
-            # =========================
-            self.db.execute(
-                """
-                INSERT INTO plaza (customer_name, customer_phone, product_id, imei, colour, quantity, recorded_by)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    customer_name,
-                    customer_phone,
-                    product_id,
-                    imei,
-                    colour,
-                    quantity,
-                    user_id
-                )
-            )
+            data = self.service.get_all_sales()
 
-    
-            # =========================
-            # 🔥 3. FETCH LAST RECORD
-            # =========================
-            record = self.db.fetch_one(
-                "SELECT id FROM plaza ORDER BY id DESC LIMIT 1"
-            )
+            if not data:
+                self.status.configure(text="No sales records")
+                return
 
-            # =========================
-            # 🔐 LOG ACTION
-            # =========================
-            self.logger.log(user_id, "CREATE", "plaza", record["id"])
+            self.all_data = data
+            self.display(data)
 
-            return record
+            self.status.configure(text=f"{len(data)} records")
 
         except Exception as e:
-            raise e
+            messagebox.showerror("Error", str(e))
 
-    def mark_as_sale(self, user_id: int, plaza_id: int):
-        record = self.db.fetch_one(
-            "SELECT * FROM plaza WHERE id=%s",
-            (plaza_id,)
-        )
+    def display(self, data):
+        self.tree.delete(*self.tree.get_children())
 
-        if not record:
-            raise ValueError("Sale record not found")
+        for row in data:
+            self.tree.insert("", "end", values=(
+                row.get("batch_no","-"),
+                row.get("product_name"),
+                row.get("imei"),
+                row.get("colour"),
+                row.get("quantity"),
+                row.get("sold_by"),
+                self.format_date(row.get("created_at"))
+            ))
 
-        # get stock
-        stock = self.db.fetch_one(
-            "SELECT id, quantity FROM stock WHERE imei=%s AND colour=%s",
-            (record["imei"], record["colour"])
-        )
+    def filter_table(self, e=None):
+        k = self.search_var.get().lower()
 
-        if not stock:
-            raise ValueError("Stock not found")
+        if not k:
+            self.display(self.all_data)
+            return
 
-        if stock["quantity"] < record["quantity"]:
-            raise ValueError("Insufficient stock")
+        self.display([
+            r for r in self.all_data
+            if k in str(r.get("product_name","")).lower()
+            or k in str(r.get("imei","")).lower()
+        ])
 
+    def format_date(self, dt):
         try:
-            # ✅ INSERT INTO plaza_sales (NEW TABLE)
-            self.db.execute(
-                """
-                INSERT INTO plaza_sales (
-                    plaza_id, product_id, imei, colour, quantity, sold_by
-                )
-                VALUES (%s,%s,%s,%s,%s,%s)
-                """,
-                (
-                    plaza_id,
-                    record["product_id"],
-                    record["imei"],
-                    record["colour"],
-                    record["quantity"],
-                    user_id
-                )
-            )
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except:
+            return str(dt) if dt else "-"
 
-            # ✅ UPDATE STOCK
-            new_qty = stock["quantity"] - record["quantity"]
+    def export_to_excel(self):
+        if not self.all_data:
+            messagebox.showwarning("No Data","Nothing to export")
+            return
 
-            if new_qty > 0:
-                self.db.execute(
-                    "UPDATE stock SET quantity=%s WHERE id=%s",
-                    (new_qty, stock["id"])
-                )
-            else:
-                self.db.execute(
-                    "DELETE FROM stock WHERE id=%s",
-                    (stock["id"],)
-                )
+        df = pd.DataFrame([{
+            "BatchNo": r.get("batch_no"),
+            "Product": r.get("product_name"),
+            "IMEI": r.get("imei"),
+            "Colour": r.get("colour"),
+            "Qty": r.get("quantity"),
+            "Sold By": r.get("sold_by"),
+            "Date": self.format_date(r.get("created_at"))
+        } for r in self.all_data])
 
-            self.logger.log(user_id, "SALE", "plaza_sales", plaza_id)
+        exporter = ExcelExporter("RetailMan_Reports.xlsx")
+        exporter.export_sheet("PlazaSales", df)
 
-        except Exception as e:
-            raise e
-
-
-    # =========================
-    # 📊 FETCH ALL SALES
-    # =========================
-    def get_all(self):
-        return self.db.fetch_all("SELECT * FROM plaza")
-
-    # =========================
-    # 📊 SALES BY STAFF
-    # =========================
-    def get_sales_by_staff(self):
-        query = """
-        SELECT recorded_by, COUNT(*) as total_sales
-        FROM plaza
-        GROUP BY recorded_by
-        """
-        return self.db.fetch_all(query)
+        messagebox.showinfo("Success","Excel updated")

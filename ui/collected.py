@@ -1,7 +1,8 @@
 #ui/collected.py
 import customtkinter as ctk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, messagebox
 import pandas as pd
+from utils.excel_exporter import ExcelExporter
 
 
 class CollectedPage:
@@ -22,10 +23,10 @@ class CollectedPage:
         ctk.CTkLabel(
             self.frame,
             text="Collected Devices",
-            font=("Arial", 16)
+            font=("Arial", 12)
         ).pack(pady=10)
 
-        # ===== TOP BAR =====
+        # TOP BAR
         top = ctk.CTkFrame(self.frame)
         top.pack(fill="x", padx=10, pady=5)
 
@@ -34,7 +35,7 @@ class CollectedPage:
         search_entry = ctk.CTkEntry(
             top,
             textvariable=self.search_var,
-            placeholder_text="🔍 Search collected devices..."
+            placeholder_text="Search collected devices..."
         )
         search_entry.pack(side="left", fill="x", expand=True, padx=5)
         search_entry.bind("<KeyRelease>", self.filter_table)
@@ -47,43 +48,44 @@ class CollectedPage:
             command=self.export_to_excel
         ).pack(side="right", padx=5)
 
-        # ===== TABLE =====
+        # TABLE
         self.tree = ttk.Treeview(
-            self.frame,
-            columns=(
-                "ID",
-                "Product",
-                "Customer",
-                "Contact",
-                "Collector",
-                "Collector Phone",
-                "Description",
-                "Date",
-                "Status"
-            ),
-            show="headings"
-        )
+        self.frame,
+        columns=(
+            "ID",
+            "BatchNo",
+            "Product",
+            "Customer",
+            "Contact",
+            "Collector",
+            "Collector Phone",
+            "Date",
+            "Status"
+        ),
+        show="headings"
+    )
+
 
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=140, anchor="w")
+            self.tree.column(col, width=140, anchor="center")
 
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
 
     # ==============================
-    # LOAD DATA (OPTIMIZED)
+    # LOAD DATA (FIXED QUERY)
     # ==============================
     def load_data(self):
         try:
             query = """
             SELECT 
                 c.id,
+                c.batch_no,
                 p.name AS product_name,
                 c.customer_name,
                 c.customer_contact,
                 c.collected_by_name,
                 c.collected_by_phone,
-                c.description,
                 c.created_at,
                 c.status
             FROM collected c
@@ -91,30 +93,40 @@ class CollectedPage:
             ORDER BY c.created_at DESC
             """
 
-            self.all_data = self.db.fetch_all(query)
+            self.all_data = self.db.fetch_all(query) or []
             self.display_table(self.all_data)
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
     # ==============================
+    # FORMAT DATE
+    # ==============================
+    def format_date(self, dt):
+        if not dt:
+            return "-"
+        try:
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except:
+            return str(dt)
+
+    # ==============================
     # DISPLAY TABLE
     # ==============================
     def display_table(self, data):
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+        self.tree.delete(*self.tree.get_children())
 
         for row in data:
             self.tree.insert("", "end", values=(
-                row["id"],
-                row["product_name"] or "Unknown",
-                row["customer_name"],
-                row["customer_contact"],
-                row["collected_by_name"],
-                row["collected_by_phone"],
-                row["description"],
-                row["created_at"],
-                row["status"]
+                row.get("id"),
+                row.get("batch_no"),
+                row.get("product_name") or "Unknown",
+                row.get("customer_name"),
+                row.get("customer_contact"),
+                row.get("collected_by_name"),
+                row.get("collected_by_phone"),
+                self.format_date(row.get("created_at")),
+                row.get("status")
             ))
 
     # ==============================
@@ -125,53 +137,44 @@ class CollectedPage:
 
         filtered = [
             row for row in self.all_data
-            if keyword in (row["product_name"] or "").lower()
-            or keyword in row["customer_name"].lower()
-            or keyword in row["customer_contact"].lower()
-            or keyword in row["collected_by_name"].lower()
-            or keyword in row["collected_by_phone"].lower()
-            or keyword in (row["description"] or "").lower()
+            if keyword in str(row.get("product_name", "")).lower()
+            or keyword in str(row.get("customer_name", "")).lower()
+            or keyword in str(row.get("customer_contact", "")).lower()
+            or keyword in str(row.get("collected_by_name", "")).lower()
+            or keyword in str(row.get("collected_by_phone", "")).lower()
         ]
 
         self.display_table(filtered)
 
     # ==============================
-    # EXPORT TO EXCEL
+    # EXPORT
     # ==============================
     def export_to_excel(self):
         try:
             if not self.all_data:
-                messagebox.showwarning("No Data", "Nothing to export")
+                messagebox.showwarning("No Data", "No collected data available")
                 return
 
-            formatted = []
+            df = pd.DataFrame([
+                {
+                    "Product": row.get("product_name"),
+                    "Customer": row.get("customer_name"),
+                    "Contact": row.get("customer_contact"),
+                    "Collector": row.get("collected_by_name"),
+                    "Collector Phone": row.get("collected_by_phone"),
+                    "Status": row.get("status"),
+                    "Date": self.format_date(row.get("created_at"))
+                }
+                for row in self.all_data
+            ])
 
-            for row in self.all_data:
-                formatted.append({
-                    "Product": row["product_name"],
-                    "Customer": row["customer_name"],
-                    "Contact": row["customer_contact"],
-                    "Collector": row["collected_by_name"],
-                    "Collector Phone": row["collected_by_phone"],
-                    "Description": row["description"],
-                    "Date": row["created_at"],
-                    "Status": row["status"]
-                })
+            exporter = ExcelExporter("RetailMan_Reports.xlsx")
+            exporter.export_sheet("Collected", df)
 
-            df = pd.DataFrame(formatted)
-
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                title="Save Excel File"
+            messagebox.showinfo(
+                "Export Successful",
+                "Collected sheet updated in RetailMan_Reports.xlsx"
             )
-
-            if not file_path:
-                return
-
-            df.to_excel(file_path, index=False)
-
-            messagebox.showinfo("Success", "Exported successfully")
 
         except Exception as e:
             messagebox.showerror("Export Error", str(e))

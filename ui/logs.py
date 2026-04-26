@@ -3,6 +3,8 @@ import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import pandas as pd
 from datetime import datetime
+from utils.excel_exporter import ExcelExporter
+from tkinter import messagebox
 
 from app.config import UIConfig
 
@@ -31,7 +33,7 @@ class LogsPage:
         header = ctk.CTkLabel(
             self.frame,
             text="Compliance Logs (Audit Trail)",
-            font=("Arial", 16)
+            font=("Arial", 12)
         )
         header.pack(pady=10)
 
@@ -163,31 +165,29 @@ class LogsPage:
     # ==============================
     def export_to_excel(self):
         try:
-            if not self.current_data:
-                messagebox.showwarning("No Data", "No logs available to export")
+            if not self.all_data:
+                messagebox.showwarning("No Data", "No system logs available")
                 return
 
-            df = pd.DataFrame(self.current_data)
+            df = pd.DataFrame([
+                {
+                    "Product": row.get("product_name"),
+                    "IMEI": row.get("imei"),
+                    "Colour": row.get("colour"),
+                    "Quantity": row.get("quantity"),
+                    "Sold By": row.get("sold_by"),
+                    "Date": self.format_date(row.get("created_at"))
+                }
+                for row in self.all_data
+            ])
 
-            df = df.rename(columns={
-                "name": "User",
-                "action": "Action",
-                "table_name": "Table",
-                "created_at": "Date"
-            })[["User", "Action", "Table", "Date"]]
+            exporter = ExcelExporter("RetailMan_Reports.xlsx")
+            exporter.export_sheet("System Logs", df)
 
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                title="Save Logs File"
+            messagebox.showinfo(
+                "Export Successful",
+                "System Logs sheet updated in RetailMan_Reports.xlsx"
             )
-
-            if not file_path:
-                return
-
-            df.to_excel(file_path, index=False)
-
-            messagebox.showinfo("Success", "Logs exported successfully")
 
         except Exception as e:
             messagebox.showerror("Export Error", str(e))
